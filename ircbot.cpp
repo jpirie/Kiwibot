@@ -153,7 +153,7 @@ void IrcBot::parseMessage(string str, Kiwi kiwi) {
     connected = true;
   }
 
-  if (connected) {
+  if (connected && !stringSearch(str, "PING")) {
     string jpirieSend = "PRIVMSG jpirie :"+str;
     sendMessage(jpirieSend);
   }
