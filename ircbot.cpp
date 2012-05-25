@@ -11,6 +11,8 @@ using namespace std;
 // define a data size for the input line
 #define DATA_SIZE 256
 
+bool connected;
+
 IrcBot::IrcBot(string nick, string user) {
   this->nick = nick;
   this->user  = user;
@@ -147,14 +149,26 @@ void IrcBot::sendPong(string buf) {
 void IrcBot::parseMessage(string str, Kiwi kiwi) {
   cout << "Handling this string: " << str << endl;
 
+  if (stringSearch(str, "End of /NAMES list")) {
+    connected = true;
+  }
+
+  if (connected) {
+    string jpirieSend = "PRIVMSG jpirie :"+str;
+    sendMessage(jpirieSend);
+  }
+
+
+  /* channel names SHOULD NOT be hardcoded! Get rid of this. */
+
   if (stringSearch(str,"hi kiwi"))
-    sendMessage("PRIVMSG #caffeine-addicts-test :hi, CREE!");
+    sendMessage("PRIVMSG #caffeine-addicts :hi, CREE!");
   else if (stringSearch(str,"cup of tea for you kiwi?"))
-    sendMessage("PRIVMSG #caffeine-addicts-test :but of course! CREE-CREE!");
+    sendMessage("PRIVMSG #caffeine-addicts :but of course! CREE-CREE!");
 
   // sends the kiwi's hunger level to the channel
   else if (stringSearch(str,"kiwi hungerLevel")) {
-    string message = "PRIVMSG #caffeine-addicts-test :current huger level is ";
+    string message = "PRIVMSG #caffeine-addicts :current huger level is ";
 
     // we should really include a template or something for adding numbers to strings properly
     std::stringstream stream;
