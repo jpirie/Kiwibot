@@ -154,8 +154,13 @@ void IrcBot::parseMessage(string str, Kiwi kiwi) {
   }
 
   if (connected && !stringSearch(str, "PING")) {
-    string jpirieSend = "PRIVMSG jpirie :"+str;
-    sendMessage(jpirieSend);
+    /*
+     * jpirie: this needs to be fixed. It seems to copy what the user enters
+     *         and flood the channel. Maybe need to check that I'm actually
+     *         logged on (it should do this anyway, even if that is not the bug)?
+     */
+    //string jpirieSend = "PRIVMSG jpirie :"+str;
+    //sendMessage(jpirieSend);
   }
 
 
