@@ -1,3 +1,10 @@
+/*
+ * jpirie: WARNING: This is deprecated.
+ *
+ * Such functionality should now take place in the lua code.
+ * This is just kept until it gets moved over or whatever
+ */
+
 /* constructor for Kiwi, sets bot attributes */
 
 #include "kiwi.h"

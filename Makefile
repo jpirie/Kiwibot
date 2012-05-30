@@ -5,7 +5,7 @@ default:
 
 kiwibot:
 	rm -f kiwibot
-	g++ --output kiwibot *.cpp
+	g++ --output kiwibot -I/usr/include/luabind -llua main.cpp ircbot.cpp kiwi.cpp
 
 clean:
 	rm -f kiwibot *~

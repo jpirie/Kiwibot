@@ -6,12 +6,19 @@
 
 #include "ircbot.h"
 
+// headers for lua
+extern "C" {
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+}
+
 using namespace std;
 
 // define a data size for the input line
 #define DATA_SIZE 256
 
-bool connected;
+int connectionSocket;
 
 IrcBot::IrcBot(string nick, string user) {
   this->nick = nick;
@@ -22,7 +29,28 @@ IrcBot::IrcBot(string nick, string user) {
 
 // we close the connection when deconstructing the bot
 IrcBot::~IrcBot() {
+  // close down the lua plugin
+  lua_close(luaState);
+
+  // close the socket
   close (connectionSocket);
+}
+
+// same as sendMessage but called by the Lua code
+int sendLuaMessage(lua_State *luaState) {
+
+  // the channel name should not be hard coded here, change this.
+  string msg = "PRIVMSG #caffeine-addicts-test :";
+  int message = lua_gettop(luaState);
+
+  // 1 is the first index of the array sent back (we only send one string to this function)
+  msg  += lua_tostring(luaState, 1);
+
+  // add carridge return and new line to the end of messages
+  msg += "\r\n";
+
+  send(connectionSocket,msg.c_str(),msg.length(),0);
+  return 0;
 }
 
 /* initialises the irc bot. Gives birth to a new kiwi,
@@ -32,6 +60,22 @@ void IrcBot::init(string channel) {
   // set up our fun friend - the kiwi
   Kiwi kiwi = Kiwi();
   this->kiwi = kiwi;
+
+  // load the plugin system
+  this->luaState = lua_open();
+  luaL_openlibs(luaState);
+  lua_register(luaState, "sendLuaMessage", sendLuaMessage);
+  std::cerr << "-- Loading plugin: " << "lua/loader.lua" << std::endl;
+  int status = luaL_loadfile(luaState, "lua/loader.lua");
+
+  // check if there was an error loading the plugin loader
+  if (status) {
+    std::cerr << "-- error: " << lua_tostring(luaState, -1) << std::endl;
+    lua_pop(luaState, 1); // remove error message
+  }
+
+  lua_pcall(luaState, 0, 0, 0);   // need to do the first run or nothing works it seems
+
 
   // initialise connections to the IRC server
   struct addrinfo hints, *serverInfo;
@@ -149,39 +193,20 @@ void IrcBot::sendPong(string buf) {
 void IrcBot::parseMessage(string str, Kiwi kiwi) {
   cout << "Handling this string: " << str << endl;
 
-  if (stringSearch(str, "End of /NAMES list")) {
-    connected = true;
-  }
-
-  if (connected && !stringSearch(str, "PING")) {
+  //if (connected && !stringSearch(str, "PING")) {
     /*
      * jpirie: this needs to be fixed. It seems to copy what the user enters
      *         and flood the channel. Maybe need to check that I'm actually
      *         logged on (it should do this anyway, even if that is not the bug)?
+     *
+     * NOTE: notifying me when i happen to be on a phone should be part of a plugin
+     *       for kiwi most likely.
      */
     //string jpirieSend = "PRIVMSG jpirie :"+str;
     //sendMessage(jpirieSend);
-  }
+  //}
 
-
-  /* channel names SHOULD NOT be hardcoded! Get rid of this. */
-
-  if (stringSearch(str,"hi kiwi"))
-    sendMessage("PRIVMSG #caffeine-addicts :hi, CREE!");
-  else if (stringSearch(str,"cup of tea for you kiwi?"))
-    sendMessage("PRIVMSG #caffeine-addicts :but of course! CREE-CREE!");
-
-  // sends the kiwi's hunger level to the channel
-  else if (stringSearch(str,"kiwi hungerLevel")) {
-    string message = "PRIVMSG #caffeine-addicts :current huger level is ";
-
-    // we should really include a template or something for adding numbers to strings properly
-    std::stringstream stream;
-    stream << kiwi.getHungerLevel();
-    std::string arraystring = stream.str();
-    message += arraystring;
-
-    // send the message out to the user
-    sendMessage(message);
-  }
+  lua_getglobal(luaState, "main");       //get ready to call the main function
+  lua_pushstring(luaState, str.c_str()); //with the current string from the server as a parameter
+  lua_pcall(luaState, 1, 0, 0);          //call the function!
 }

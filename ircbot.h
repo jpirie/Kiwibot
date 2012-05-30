@@ -5,6 +5,13 @@
 
 #include "kiwi.h"
 
+// headers for lua
+extern "C" {
+#include "lua.h"
+#include "lualib.h"
+#include "lauxlib.h"
+}
+
 class IrcBot {
 public:
   IrcBot(std::string, std::string);
@@ -19,9 +26,10 @@ public:
  private:
   std::string message;
   char *port;
-  int connectionSocket;
 
   Kiwi kiwi;
+
+  lua_State *luaState;
 
   std::string nick;
   std::string user;
@@ -32,6 +40,7 @@ public:
   char * timeNow();
 
   int sendMessage(std::string);
+  //int sendLuaMessage(lua_State*);
 
   void sendPong(std::string buf);
 
