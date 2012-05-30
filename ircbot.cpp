@@ -221,27 +221,27 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
 
   if (stringSearch(str, "kiwi: help")) {
-    sendMessage("PRIVMSG #caffeine-addicts-test :I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
-    sendMessage("PRIVMSG #caffeine-addicts-test :\"update repo\". Updates the repository I sit in by pulling from the public http link.");
-    sendMessage("PRIVMSG #caffeine-addicts-test :\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
-    sendMessage("PRIVMSG #caffeine-addicts-test :\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
+    sendMessage("PRIVMSG #caffeine-addicts :I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
+    sendMessage("PRIVMSG #caffeine-addicts :\"update repo\". Updates the repository I sit in by pulling from the public http link.");
+    sendMessage("PRIVMSG #caffeine-addicts :\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
+    sendMessage("PRIVMSG #caffeine-addicts :\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
   }
   else if (stringSearch(str, "kiwi: update repo")) {
     cout << "Updating repository..." << endl;
-    sendMessage("PRIVMSG #caffeine-addicts-test :Update the repo? Sure thing!");
+    sendMessage("PRIVMSG #caffeine-addicts :Update the repo? Sure thing!");
     system("cd ~/repos/kiwibot; git pull http master");
     cout << "done updating repository." << endl;
-    sendMessage("PRIVMSG #caffeine-addicts-test :All done boss! <3");
+    sendMessage("PRIVMSG #caffeine-addicts :All done boss! <3");
   }
   else if (stringSearch(str, "kiwi: restart")) {
-    sendMessage("PRIVMSG #caffeine-addicts-test :Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
+    sendMessage("PRIVMSG #caffeine-addicts :Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
     sendMessage("QUIT");
     close (connectionSocket);  //close the open socket
     cout << "Restarting...";
     return REBOOT;
   }
   else if (stringSearch(str, "kiwi: shutdown")) {
-    sendMessage("PRIVMSG #caffeine-addicts-test :Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
+    sendMessage("PRIVMSG #caffeine-addicts :Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
     sendMessage("QUIT");
     close (connectionSocket);  //close the open socket
     cout << "Shutting down...";
