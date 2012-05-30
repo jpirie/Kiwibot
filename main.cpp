@@ -12,7 +12,7 @@ int main() {
   bot.init("#caffeine-addicts");
 
   /* start the main loop where we look at the messages coming in and out */
-  bot.mainLoop();
+  int botStatus = bot.mainLoop();
 
-  return 0;
+  return botStatus;
 }

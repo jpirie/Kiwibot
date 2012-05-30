@@ -3,6 +3,7 @@
 #include <sstream>
 #include <unistd.h>
 #include <netdb.h>
+#include <stdlib.h>
 
 #include "ircbot.h"
 
@@ -19,6 +20,14 @@ using namespace std;
 #define DATA_SIZE 256
 
 int connectionSocket;
+
+/* integer return codes from functions.
+ * 0 is standard success message
+ * 1 means kiwibot has been asked to be rebooted
+ */
+int SUCCESS = 0;
+int REBOOT  = 1;
+int SHUTDOWN  = 2;
 
 IrcBot::IrcBot(string nick, string user) {
   this->nick = nick;
@@ -119,27 +128,31 @@ void IrcBot::init(string channel) {
 
 /* checks for any messages from the server, and parses any that it finds. It
  * also responds to PING request with PONG message. */
-void IrcBot::checkAndParseMessages() {
+int IrcBot::checkAndParseMessages() {
   char buffer[DATA_SIZE];
 
   // recieve messegase from the server
   message=checkServerMessages(buffer, sizeof(buffer));
 
   // handle the message
-  parseMessage(message, this->kiwi);
+  int botStatus = parseMessage(message, this->kiwi);
 
   // check for ping messages
   if (stringSearch(message,"PING "))
     sendPong(message);
+
+  return botStatus;
 }
 
 /* the main loop
  * we just keep checking and parsing messages forever */
-void IrcBot::mainLoop () {
+int IrcBot::mainLoop () {
   char buffer [DATA_SIZE];
 
   while (1) {
-    checkAndParseMessages();
+    int botStatus = checkAndParseMessages();
+    if (botStatus == REBOOT || botStatus == SHUTDOWN)
+      return botStatus;
   }
 }
 
@@ -190,7 +203,7 @@ void IrcBot::sendPong(string buf) {
 /* the function which parses the messages that the user sends
  * this should really be in its own file
  */
-void IrcBot::parseMessage(string str, Kiwi kiwi) {
+int IrcBot::parseMessage(string str, Kiwi kiwi) {
   cout << "Handling this string: " << str << endl;
 
   //if (connected && !stringSearch(str, "PING")) {
@@ -206,7 +219,38 @@ void IrcBot::parseMessage(string str, Kiwi kiwi) {
     //sendMessage(jpirieSend);
   //}
 
+
+  if (stringSearch(str, "kiwi: help")) {
+    sendMessage("PRIVMSG #caffeine-addicts-test :I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
+    sendMessage("PRIVMSG #caffeine-addicts-test :\"update repo\". Updates the repository I sit in by pulling from the public http link.");
+    sendMessage("PRIVMSG #caffeine-addicts-test :\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
+    sendMessage("PRIVMSG #caffeine-addicts-test :\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
+  }
+  else if (stringSearch(str, "kiwi: update repo")) {
+    cout << "Updating repository..." << endl;
+    sendMessage("PRIVMSG #caffeine-addicts-test :Update the repo? Sure thing!");
+    system("cd ~/repos/kiwibot; git pull http master");
+    cout << "done updating repository." << endl;
+    sendMessage("PRIVMSG #caffeine-addicts-test :All done boss! <3");
+  }
+  else if (stringSearch(str, "kiwi: restart")) {
+    sendMessage("PRIVMSG #caffeine-addicts-test :Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
+    sendMessage("QUIT");
+    close (connectionSocket);  //close the open socket
+    cout << "Restarting...";
+    return REBOOT;
+  }
+  else if (stringSearch(str, "kiwi: shutdown")) {
+    sendMessage("PRIVMSG #caffeine-addicts-test :Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
+    sendMessage("QUIT");
+    close (connectionSocket);  //close the open socket
+    cout << "Shutting down...";
+    return SHUTDOWN;
+  }
+
   lua_getglobal(luaState, "main");       //get ready to call the main function
   lua_pushstring(luaState, str.c_str()); //with the current string from the server as a parameter
   lua_pcall(luaState, 1, 0, 0);          //call the function!
+
+  return SUCCESS;
 }

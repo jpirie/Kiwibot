@@ -21,7 +21,7 @@ public:
 
   void init(std::string);
 
-  void mainLoop();
+  int mainLoop();
 
  private:
   std::string message;
@@ -44,8 +44,8 @@ public:
 
   void sendPong(std::string buf);
 
-  void parseMessage(std::string buf, Kiwi);
-  void checkAndParseMessages ();
+  int parseMessage(std::string buf, Kiwi);
+  int checkAndParseMessages ();
 
 };
 
