@@ -40,7 +40,7 @@ IrcBot::~IrcBot() {
 int sendLuaMessage(lua_State *luaState) {
 
   // the channel name should not be hard coded here, change this.
-  string msg = "PRIVMSG #caffeine-addicts-test :";
+  string msg = "PRIVMSG #caffeine-addicts :";
   int message = lua_gettop(luaState);
 
   // 1 is the first index of the array sent back (we only send one string to this function)

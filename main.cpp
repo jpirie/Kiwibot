@@ -9,7 +9,7 @@ int main() {
   IrcBot bot = IrcBot("NICK KaffinatedKiwi","USER guest tolmoon tolsun :Ronnie Regan");
 
   /* initialise the bot on channel specified in parameter*/
-  bot.init("#caffeine-addicts-test");
+  bot.init("#caffeine-addicts");
 
   /* start the main loop where we look at the messages coming in and out */
   bot.mainLoop();
