@@ -19,6 +19,10 @@ using namespace std;
 // define a data size for the input line
 #define DATA_SIZE 256
 
+/* this needs to be a global variable because of a funky issue with the fact
+   that C++ functions need specific signatures for lua to call them */
+string channelSendString = "";
+
 int connectionSocket;
 
 /* integer return codes from functions.
@@ -45,12 +49,14 @@ IrcBot::~IrcBot() {
   close (connectionSocket);
 }
 
-// same as sendMessage but called by the Lua code
+/* same as sendMessage but called by the Lua code
+ * we need a new function because C++ functions must have a specific signature
+ * if lua functions are to call them */
 int sendLuaMessage(lua_State *luaState) {
 
   // the channel name should not be hard coded here, change this.
-  string msg = "PRIVMSG #caffeine-addicts :";
-  int message = lua_gettop(luaState);
+  string msg = channelSendString;
+  lua_gettop(luaState);
 
   // 1 is the first index of the array sent back (we only send one string to this function)
   msg  += lua_tostring(luaState, 1);
@@ -65,6 +71,8 @@ int sendLuaMessage(lua_State *luaState) {
 /* initialises the irc bot. Gives birth to a new kiwi,
    and sets of sockets for communication */
 void IrcBot::init(string channel) {
+
+  channelSendString = "PRIVMSG "+channel+" :";
 
   // set up our fun friend - the kiwi
   Kiwi kiwi = Kiwi();
@@ -185,6 +193,10 @@ int IrcBot::sendMessage(string msg) {
   return send(connectionSocket,msg.c_str(),msg.length(),0);
 }
 
+int IrcBot::outputToChannel(string msg) {
+  sendMessage(channelSendString+msg);
+}
+
 // sends the pong packet so the IRC server knows that we're alive
 void IrcBot::sendPong(string buf) {
   // ping and pong messages
@@ -221,27 +233,30 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
 
   if (stringSearch(str, "kiwi: help")) {
-    sendMessage("PRIVMSG #caffeine-addicts :I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
-    sendMessage("PRIVMSG #caffeine-addicts :\"update repo\". Updates the repository I sit in by pulling from the public http link.");
-    sendMessage("PRIVMSG #caffeine-addicts :\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
-    sendMessage("PRIVMSG #caffeine-addicts :\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
+    outputToChannel("I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
+    outputToChannel("\"update repo\". Updates the repository I sit in by pulling from the public http link.");
+    outputToChannel("\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
+    outputToChannel("\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
+
+    // kiwi: plugin list is handled in the plugin loader
+    outputToChannel("\"plugin list\". Lists the current plugins and their activation status.");
   }
   else if (stringSearch(str, "kiwi: update repo")) {
     cout << "Updating repository..." << endl;
-    sendMessage("PRIVMSG #caffeine-addicts :Update the repo? Sure thing!");
-    system("cd ~/repos/kiwibot; git pull http master");
+    outputToChannel("Update the repo? Sure thing!");
+    outputToChannel("cd ~/repos/kiwibot; git pull http master");
     cout << "done updating repository." << endl;
-    sendMessage("PRIVMSG #caffeine-addicts :All done boss! <3");
+    outputToChannel("All done boss! <3");
   }
   else if (stringSearch(str, "kiwi: restart")) {
-    sendMessage("PRIVMSG #caffeine-addicts :Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
+    outputToChannel("Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
     sendMessage("QUIT");
     close (connectionSocket);  //close the open socket
     cout << "Restarting...";
     return REBOOT;
   }
   else if (stringSearch(str, "kiwi: shutdown")) {
-    sendMessage("PRIVMSG #caffeine-addicts :Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
+    outputToChannel("Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
     sendMessage("QUIT");
     close (connectionSocket);  //close the open socket
     cout << "Shutting down...";

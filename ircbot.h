@@ -18,6 +18,7 @@ public:
   virtual ~IrcBot();
 
   bool setup;
+  int outputToChannel(std::string);
 
   void init(std::string);
 
