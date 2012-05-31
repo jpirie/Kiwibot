@@ -254,7 +254,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   else if (stringSearch(str, "kiwi: update repo")) {
     cout << "Updating repository..." << endl;
     outputToChannel("Update the repo? Sure thing!");
-    outputToChannel("cd ~/repos/kiwibot; git pull http master");
+    system("cd ~/repos/kiwibot; git pull http master");
     cout << "done updating repository." << endl;
     outputToChannel("All done boss! <3");
   }
