@@ -10,8 +10,10 @@
 # do forever
 while [ 1 ]
 do
+    date=`date '+%Y-%m-%d'`
+
     # run kiwi bot
-    ./kiwibot
+    ./kiwibot > "$date-log"
 
     # get the return value
     returnValue="$?"
