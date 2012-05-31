@@ -280,7 +280,13 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   if (connected) {
     lua_getglobal(luaState, "main");       //get ready to call the main function
     lua_pushstring(luaState, str.c_str()); //with the current string from the server as a parameter
-    lua_pcall(luaState, 1, 0, 0);          //call the function!
+    int errors = lua_pcall(luaState, 1, 0, 0);          //call the function!
+
+    if ( errors!=0 ) {
+      std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;
+      lua_pop(luaState, 1); // remove error message
+    }
+
   }
 
   return SUCCESS;
