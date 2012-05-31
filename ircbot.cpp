@@ -19,6 +19,8 @@ using namespace std;
 // define a data size for the input line
 #define DATA_SIZE 256
 
+bool connected;
+
 /* this needs to be a global variable because of a funky issue with the fact
    that C++ functions need specific signatures for lua to call them */
 string channelSendString = "";
@@ -91,7 +93,8 @@ void IrcBot::init(string channel) {
     lua_pop(luaState, 1); // remove error message
   }
 
-  lua_pcall(luaState, 0, 0, 0);   // need to do the first run or nothing works it seems
+  // run pcall to set up the state
+  lua_pcall(luaState, 0, 0, 0);
 
 
   // initialise connections to the IRC server
@@ -142,8 +145,11 @@ int IrcBot::checkAndParseMessages() {
   // recieve messegase from the server
   message=checkServerMessages(buffer, sizeof(buffer));
 
+  int botStatus;
+
   // handle the message
-  int botStatus = parseMessage(message, this->kiwi);
+  if (message != "")
+    botStatus = parseMessage(message, this->kiwi);
 
   // check for ping messages
   if (stringSearch(message,"PING "))
@@ -180,7 +186,8 @@ string IrcBot::checkServerMessages(char* buffer, size_t size) {
   // convert to std::string and return
   string str = "";
   str.assign(buffer);
-  cout << "received message: " << str << "\n" << endl;
+  if (str != "")
+    cout << "received message: " << str << "\n" << endl;
   return str;
 }
 
@@ -217,6 +224,9 @@ void IrcBot::sendPong(string buf) {
  */
 int IrcBot::parseMessage(string str, Kiwi kiwi) {
   cout << "Handling this string: " << str << endl;
+
+  if (stringSearch(str, "End of /NAMES list"))
+    connected = true;
 
   //if (connected && !stringSearch(str, "PING")) {
     /*
@@ -263,9 +273,15 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     return SHUTDOWN;
   }
 
-  lua_getglobal(luaState, "main");       //get ready to call the main function
-  lua_pushstring(luaState, str.c_str()); //with the current string from the server as a parameter
-  lua_pcall(luaState, 1, 0, 0);          //call the function!
+  /* it is important to check that we are passed all the initial server messages!
+   * if we send some messages in the middle of the process of this, we seem to end
+   * up in infinite loops (probably get caught sending messages to the server, which it
+   * sends back with an error message, which we then send back for whatever reason) */
+  if (connected) {
+    lua_getglobal(luaState, "main");       //get ready to call the main function
+    lua_pushstring(luaState, str.c_str()); //with the current string from the server as a parameter
+    lua_pcall(luaState, 1, 0, 0);          //call the function!
+  }
 
   return SUCCESS;
 }
