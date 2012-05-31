@@ -16,8 +16,6 @@ do
     # get the return value
     returnValue="$?"
 
-    echo "Got return value $returnValue"
-
     # code 1 = reboot the kiwi
     if [ "$returnValue" == 1 ]
     then
