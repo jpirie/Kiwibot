@@ -4,6 +4,5 @@ function time(line)
   end
 end
 
-
-return time
+return {name="Time", description="Returns the current date and time", parseFunction=time}
 

@@ -40,6 +40,6 @@ function animalParse(currentLine)
   end
 end
 
-return animalParse
+return {name="Animal Parser", description="Parses greetings for the kiwi", parseFunction=animalParse}
 
 
