@@ -3,7 +3,7 @@
 -- plugin loader so users can change that file and
 -- load newly created plugins without having to
 -- restart kiwibot
-function main(currentLine)
+function main(currentLine, updatedFiles)
   dofile("lua/plugin-loader.lua")
   pluginLoader(currentLine)
 end

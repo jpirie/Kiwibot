@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <netdb.h>
 #include <stdlib.h>
+#include <map>
+#include <vector>
 
 #include "ircbot.h"
 
@@ -39,6 +41,9 @@ IrcBot::IrcBot(string nick, string user) {
   this->nick = nick;
   this->user  = user;
 
+  // a map from file name to hash of the file
+  map<string, string> luaFileHashes;
+
   message = "";
 }
 
@@ -68,6 +73,21 @@ int sendLuaMessage(lua_State *luaState) {
 
   send(connectionSocket,msg.c_str(),msg.length(),0);
   return 0;
+}
+
+std::string runProcessWithReturn(const char* cmd) {
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe)
+      return "an error occurred";
+
+    char buffer[256];
+    string stdout = "";
+    while(!feof(pipe)) {
+        if(fgets(buffer, 128, pipe) != NULL)
+                stdout += buffer;
+    }
+    pclose(pipe);
+    return stdout;
 }
 
 /* initialises the irc bot. Gives birth to a new kiwi,
@@ -278,9 +298,66 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
    * up in infinite loops (probably get caught sending messages to the server, which it
    * sends back with an error message, which we then send back for whatever reason) */
   if (connected) {
-    lua_getglobal(luaState, "main");       //get ready to call the main function
-    lua_pushstring(luaState, str.c_str()); //with the current string from the server as a parameter
-    int errors = lua_pcall(luaState, 1, 0, 0);          //call the function!
+    /* we need to find out which lua files have changed since we last
+     * ran them so that we don't have to relead the files again */
+
+    // run a command to get all the lua files in the plugins folder
+    string luaFilesCommand = "find lua/plugins -name \"*.lua\"";
+    string luaFiles = runProcessWithReturn(luaFilesCommand.c_str());
+
+    std::istringstream stream(luaFiles);
+    std::string line;
+    vector<string> updatedFiles;
+
+    // loop through all the plugins found
+    while(std::getline(stream, line)) {
+      // define an iterator for the map
+      map<string,string>::iterator iter;
+
+      // get the hash of the current file we are processing
+      string sumOfFileCommand = "md5sum ";
+      sumOfFileCommand += line;
+      sumOfFileCommand += " | awk '{print $1}'";
+      string sumOfFile = runProcessWithReturn(sumOfFileCommand.c_str());
+
+      // get the existing hash we already have of the file we are processing
+      iter = luaFileHashes.find(line);
+
+      if (iter != luaFileHashes.end()) {
+	//we found a hash, compare it to the newly generated hash and see if they are the same
+	if (sumOfFile.compare((*iter).second) != 0) {
+	  cout << "File change detected in file: " << line << ". Replacing hash." << endl;
+	  luaFileHashes[line] = sumOfFile;
+	  updatedFiles.push_back(line);
+	}
+      }
+      else {
+	// we didn't have an existing hash, this is a new plugin
+	cout << "New plugin detected: " << line << endl;
+	luaFileHashes[line] = sumOfFile;
+	updatedFiles.push_back(line);
+      }
+    }
+
+    // get ready to call the "main" function
+    lua_getglobal(luaState, "main");
+
+    // parameter one: the current string from the server
+    lua_pushstring(luaState, str.c_str());
+
+    // parameter two: a new table for storing the updated files list
+    lua_createtable(luaState, updatedFiles.size(), 0);
+    int newTable = lua_gettop(luaState);
+    int index = 1;
+    for(vector<string>::iterator iter = updatedFiles.begin(); iter != updatedFiles.end(); ++iter) {
+      // push the updated file's path onto the table
+      lua_pushstring(luaState, (*iter).c_str());
+      lua_rawseti(luaState, newTable, index);
+      index++;
+    }
+
+    // call the global function that's been assigned (2 denotes the number of parameters)
+    int errors = lua_pcall(luaState, 2, 0, 0);
 
     if ( errors!=0 ) {
       std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;

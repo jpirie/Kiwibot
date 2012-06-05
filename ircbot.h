@@ -2,6 +2,7 @@
 #define IRCBOT_H_
 
 #include <string.h>
+#include <map>
 
 #include "kiwi.h"
 
@@ -25,6 +26,8 @@ public:
   int mainLoop();
 
  private:
+  std::map<std::string, std::string> luaFileHashes;
+
   std::string message;
   char *port;
 
