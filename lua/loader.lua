@@ -8,7 +8,7 @@
 plugins = {}
 loadedPlugins = {}
 
-function main(currentLine, updatedFiles)
+function main(currentLine, updatedFiles, deletedFiles)
   loadUpdatedFiles(updatedFiles)
   parseWithPlugins(currentLine)
 end
