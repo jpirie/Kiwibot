@@ -280,11 +280,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     outputToChannel("All done boss! <3");
   }
   else if (stringSearch(str, "kiwi: restart")) {
-    outputToChannel("Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
-    sendMessage("QUIT");
-    close (connectionSocket);  //close the open socket
-    cout << "Restarting...";
-    return REBOOT;
+    outputToChannel("Kiwi is silly today, my restarting seems to sometimes break! I'll stay here for now. Don't restart me with kiwi: shutdown or I'll be sure and biff you.");
   }
   else if (stringSearch(str, "kiwi: shutdown")) {
     outputToChannel("Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
