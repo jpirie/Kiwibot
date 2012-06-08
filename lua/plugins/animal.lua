@@ -34,8 +34,6 @@ function animalParse(currentLine)
       --  	  sendLuaMessage("Laters, I'll keep this channel in check for you, have no fear!")
       -- 	end
       -- end
-
-      io.write("Kiwi does not know of what you speak: ", currentLine, "\n")
     end
   end
 end
