@@ -266,7 +266,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   if (stringSearch(str, "kiwi: help")) {
     outputToChannel("I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
     outputToChannel("\"update repo\". Updates the repository I sit in by pulling from the public http link.");
-    outputToChannel("\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
+    //outputToChannel("\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
     outputToChannel("\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
 
     // kiwi: plugin list is handled in the plugin loader
@@ -275,12 +275,17 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   else if (stringSearch(str, "kiwi: update repo")) {
     cout << "Updating repository..." << endl;
     outputToChannel("Update the repo? Sure thing!");
-    system("cd ~/repos/kiwibot; git pull http master");
+    system("cd ~/repos/kiwibot; git pull http master; git pull http dynamic-plugins");
     cout << "done updating repository." << endl;
     outputToChannel("All done boss! <3");
   }
   else if (stringSearch(str, "kiwi: restart")) {
-    outputToChannel("Kiwi is silly today, my restarting seems to sometimes break! I'll stay here for now. Don't restart me with kiwi: shutdown or I'll be sure and biff you.");
+    // outputToChannel("Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
+    // sendMessage("QUIT");
+    // close (connectionSocket);  //close the open socket
+    // cout << "Restarting...";
+    // return REBOOT;
+
   }
   else if (stringSearch(str, "kiwi: shutdown")) {
     outputToChannel("Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
