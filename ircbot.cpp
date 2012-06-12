@@ -248,20 +248,6 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   if (stringSearch(str, "End of /NAMES list"))
     connected = true;
 
-  //if (connected && !stringSearch(str, "PING")) {
-    /*
-     * jpirie: this needs to be fixed. It seems to copy what the user enters
-     *         and flood the channel. Maybe need to check that I'm actually
-     *         logged on (it should do this anyway, even if that is not the bug)?
-     *
-     * NOTE: notifying me when i happen to be on a phone should be part of a plugin
-     *       for kiwi most likely.
-     */
-    //string jpirieSend = "PRIVMSG jpirie :"+str;
-    //sendMessage(jpirieSend);
-  //}
-
-
   if (stringSearch(str, "kiwi: help")) {
     outputToChannel("I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
     outputToChannel("\"update repo\". Updates the repository I sit in by pulling from the public http link.");
@@ -291,6 +277,18 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     close (connectionSocket);  //close the open socket
     cout << "Shutting down...";
     return SHUTDOWN;
+  }
+  else if (stringSearch(str, "kiwi: joe status")) {
+    string fingerJoe = "finger jbw";
+    string fingerJoeOutput = runProcessWithReturn(fingerJoe.c_str());
+    if (fingerJoeOutput.find("is not presently logged in"))
+      outputToChannel("Joe is not currently logged in. Maybe he's travelling in, wouldn't that be fun? ;)");
+    // joe uses a virgin connection, cpc will be part of the name of 'where' information
+    else if (fingerJoeOutput.find("cpc"))
+      outputToChannel("Joe is logged in to lxultra1 from a remote location. You're safe- rejoyce!");
+    // he's logged in, but it's not remotely. He must be logged in physically
+    else if (fingerJoeOutput.find("lxultra1"))
+      outputToChannel("Joe is logged in to lxultra1. Maybe he's travelling in, wouldn't that be fun? ;)");
   }
 
   /* it is important to check that we are passed all the initial server messages!
