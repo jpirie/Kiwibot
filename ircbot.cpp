@@ -22,6 +22,12 @@ using namespace std;
 // define a data size for the input line
 #define DATA_SIZE 256
 
+// define different logged in states that joe can take
+#define NOT_LOGGED_IN 1
+#define LOGGED_IN_REMOTE 2
+#define LOGGED_IN_PHYSICALLY 2
+#define JOE_UNKNOWN 3
+
 bool connected;
 
 /* this needs to be a global variable because of a funky issue with the fact
@@ -41,6 +47,8 @@ int SHUTDOWN  = 2;
 IrcBot::IrcBot(string nick, string user) {
   this->nick = nick;
   this->user  = user;
+  this->reportJoeStatus = false;
+  this->joeStatus = 0;
 
   // a map from file name to hash of the file
   map<string, string> luaFileHashes;
@@ -280,17 +288,40 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     cout << "Shutting down...";
     return SHUTDOWN;
   }
-  else if (stringSearch(str, "kiwi: joe status")) {
+  else if (stringSearch(str, "kiwi: report joe status start"))
+    reportJoeStatus = true;
+  else if (stringSearch(str, "kiwi: report joe status stop"))
+    reportJoeStatus = false;
+
+  if (reportJoeStatus) {
     string fingerJoe = "finger jbw";
     string fingerJoeOutput = runProcessWithReturn(fingerJoe.c_str());
-    if (fingerJoeOutput.find("is not presently logged in"))
-      outputToChannel("Joe is not currently logged in. Maybe he's travelling in, wouldn't that be fun? ;)");
+    if (fingerJoeOutput.find("is not presently logged in") != string::npos) {
+      if (joeStatus != NOT_LOGGED_IN ) {
+	joeStatus = NOT_LOGGED_IN;
+	outputToChannel("Joe is not currently logged in. Maybe he's travelling in, wouldn't that be fun? ;)");
+      }
+    }
     // joe uses a virgin connection, cpc will be part of the name of 'where' information
-    else if (fingerJoeOutput.find("cpc"))
-      outputToChannel("Joe is logged in to lxultra1 from a remote location. You're safe- rejoyce!");
+    else if (fingerJoeOutput.find("cpc") != string::npos) {
+      if (joeStatus != LOGGED_IN_REMOTE) {
+	joeStatus = LOGGED_IN_REMOTE;
+	outputToChannel("Joe is logged in to lxultra1 from a remote location. You're safe- rejoyce!");
+      }
+    }
     // he's logged in, but it's not remotely. He must be logged in physically
-    else if (fingerJoeOutput.find("lxultra1"))
-      outputToChannel("Joe is logged in to lxultra1. Maybe he's travelling in, wouldn't that be fun? ;)");
+    else if (fingerJoeOutput.find("lxultra1") != string::npos) {
+      if (joeStatus != LOGGED_IN_PHYSICALLY) {
+	joeStatus = LOGGED_IN_PHYSICALLY;
+	outputToChannel("Joe is logged in to lxultra1. Maybe he's travelling in, wouldn't that be fun? ;)");
+      }
+    }
+    else {
+      if (joeStatus != JOE_UNKNOWN) {
+	joeStatus = JOE_UNKNOWN;
+	outputToChannel("No conditions matched! Joe is in an unknown state! PANNNIIICCC!");
+      }
+    }
   }
 
   /* it is important to check that we are passed all the initial server messages!

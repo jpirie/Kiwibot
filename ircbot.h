@@ -38,6 +38,10 @@ public:
   std::string nick;
   std::string user;
 
+  // values to help tell if joe is in his office
+  bool reportJoeStatus;
+  int joeStatus;
+
   bool stringSearch(std::string toSearch, std::string searchFor);
   std::string checkServerMessages (char*, size_t);
 
