@@ -2,6 +2,7 @@
 #include <string>
 #include <sstream>
 #include <unistd.h>
+#include <algorithm>
 #include <netdb.h>
 #include <stdlib.h>
 #include <map>
@@ -251,7 +252,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   if (stringSearch(str, "kiwi: help")) {
     outputToChannel("I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
     outputToChannel("\"update repo\". Updates the repository I sit in by pulling from the public http link.");
-    outputToChannel("\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
+    //outputToChannel("\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
     outputToChannel("\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
 
     // kiwi: plugin list is handled in the plugin loader
@@ -260,16 +261,17 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   else if (stringSearch(str, "kiwi: update repo")) {
     cout << "Updating repository..." << endl;
     outputToChannel("Update the repo? Sure thing!");
-    system("cd ~/repos/kiwibot; git pull http master");
+    system("cd ~/repos/kiwibot; git pull http master; git pull http dynamic-plugins");
     cout << "done updating repository." << endl;
     outputToChannel("All done boss! <3");
   }
   else if (stringSearch(str, "kiwi: restart")) {
-    outputToChannel("Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
-    sendMessage("QUIT");
-    close (connectionSocket);  //close the open socket
-    cout << "Restarting...";
-    return REBOOT;
+    // outputToChannel("Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
+    // sendMessage("QUIT");
+    // close (connectionSocket);  //close the open socket
+    // cout << "Restarting...";
+    // return REBOOT;
+
   }
   else if (stringSearch(str, "kiwi: shutdown")) {
     outputToChannel("Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
@@ -305,12 +307,23 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
     std::istringstream stream(luaFiles);
     std::string line;
+    map<string,string>::iterator iter;
+
+
+    // a vector to hold the list of plugins that have been updated
     vector<string> updatedFiles;
+
+    // a vector to hold the list of plugins that have been deleted
+    vector<string> deletedFiles;
+    for (iter=luaFileHashes.begin(); iter!=luaFileHashes.end(); ++iter)
+      deletedFiles.push_back(iter->first);
 
     // loop through all the plugins found
     while(std::getline(stream, line)) {
-      // define an iterator for the map
-      map<string,string>::iterator iter;
+      // this file exists, removed it from the deletedFiles vector
+      vector<string>::iterator vectorIter = find(deletedFiles.begin(), deletedFiles.end(), line);
+      if (vectorIter != deletedFiles.end())
+	deletedFiles.erase(vectorIter);
 
       // get the hash of the current file we are processing
       string sumOfFileCommand = "md5sum ";
@@ -354,8 +367,28 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
       index++;
     }
 
+    // parameter three: a new table for storing the plugins that have been deleted
+    lua_createtable(luaState, deletedFiles.size(), 0);
+    int deletedFilesTable = lua_gettop(luaState);
+    index = 1;
+    for(vector<string>::iterator iter = deletedFiles.begin(); iter != deletedFiles.end(); ++iter) {
+      // the plugin has been deleted, remove it from the luaFileHashes map
+      map<string,string>::iterator deletedIter = luaFileHashes.find((*iter));
+      if (deletedIter != luaFileHashes.end())
+      	luaFileHashes.erase(deletedIter);
+      else
+      	cout << "Something has gone wrong! The user has deleted a plugin that we didn't even know existed!" << endl;
+
+      cout << "Deleted plugin file detected: " << (*iter) << endl;
+      // push the updated file's path onto the table
+      lua_pushstring(luaState, (*iter).c_str());
+      lua_rawseti(luaState, deletedFilesTable, index);
+      index++;
+    }
+
+
     // call the global function that's been assigned (2 denotes the number of parameters)
-    int errors = lua_pcall(luaState, 2, 0, 0);
+    int errors = lua_pcall(luaState, 3, 0, 0);
 
     if ( errors!=0 ) {
       std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;
