@@ -1,6 +1,7 @@
 local gameInProgress = false
 local whiteToMove = true
 local currentBoard = {}
+local invalidMove = "Invalid move!"
 
 -- returns a fresh board state
 function createFreshBoard()
@@ -23,7 +24,7 @@ function squareToArrayValue(square)
   end
 
   if (tonumber(splitMove[2]) < 1 or tonumber(splitMove[2]) > 8) then
-    error("Invalid move!")
+    sendLuaMessage(invalidMove)
   end
 
   numberOfFile=0
@@ -36,7 +37,7 @@ function squareToArrayValue(square)
   elseif (splitMove[1] == "g") then numberOfFile=7
   elseif (splitMove[1] == "h") then numberOfFile=8
   else
-    error("Invalid move!")
+    sendLuaMessage(invalidMove)
   end
 
   arrayValue = numberOfFile + (tonumber(splitMove[2])-1) * 8
@@ -47,7 +48,16 @@ function pawnMove(move)
   local targetSquare = squareToArrayValue(move)
   local currentBoardValue = currentBoard[targetSquare]
   sendLuaMessage("Square has currently on it "..currentBoardValue)
-  sendLuaMessage("Pawn to "..move)
+
+  -- check the player want to move into an empty square
+  if (currentBoardValue == " ") then
+
+    --check that the player is coming from a valid square
+    
+    sendLuaMessage("Pawn to "..move)
+  else
+    sendLuaMessage(invalidMove)
+  end
 end
 
 function chessParse(currentLine)
