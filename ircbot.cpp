@@ -151,7 +151,7 @@ void IrcBot::init(string channel) {
   }
 
   // send nick information
-  sendMessage(nick);
+  sendMessage("NICK "+nick);
   checkAndParseMessages();
 
   // send user information
@@ -391,6 +391,9 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     // parameter one: the current string from the server
     lua_pushstring(luaState, str.c_str());
 
+    // parameter two: the current bot's name
+    lua_pushstring(luaState, this->nick.c_str());
+
     // parameter two: a new table for storing the updated files list
     lua_createtable(luaState, updatedFiles.size(), 0);
     int newTable = lua_gettop(luaState);
@@ -422,8 +425,8 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     }
 
 
-    // call the global function that's been assigned (2 denotes the number of parameters)
-    int errors = lua_pcall(luaState, 3, 0, 0);
+    // call the global function that's been assigned (4 denotes the number of parameters)
+    int errors = lua_pcall(luaState, 4, 0, 0);
 
     if ( errors!=0 ) {
       std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;

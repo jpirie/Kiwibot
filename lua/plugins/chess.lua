@@ -60,7 +60,7 @@ function pawnMove(move)
   end
 end
 
-function chessParse(currentLine)
+function chessParse(currentLine, botName)
   if (string.find(currentLine, "kiwi: new chess game")) then
     if (gameInProgress) then
       sendLuaMessage("A game is already in progress. To restart the game, use the command \"restart chess game\" (not yet implemented!)")

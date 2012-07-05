@@ -7,7 +7,7 @@ local thanksSynonyms = {"WOW! Thanks!", "omnomnomnom", "OMNOM", "Ooh, delicious"
 -- simple function that looks for 'hi kiwi'
 -- we should really be looking for regexps or something, not
 -- straight strings.
-function animalParse(currentLine)
+function animalParse(currentLine, botName)
   -- make the current line lower case
   currentLine = currentLine:lower()
 
@@ -22,6 +22,8 @@ function animalParse(currentLine)
   end
   if (string.find(currentLine, "feeds kiwi with")) then
     sendLuaMessage(thanksSynonyms[math.random(#thanksSynonyms)])
+  elseif (string.find(currentLine, "kiwi: what is your name")) then
+    sendLuaMessage(botName)
   else
     -- check for hello messages
     for _,greeting in pairs(helloSynonyms) do

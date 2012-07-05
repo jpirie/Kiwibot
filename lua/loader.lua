@@ -8,13 +8,13 @@
 plugins = {}
 loadedPlugins = {}
 
-function main(currentLine, updatedFiles, deletedFiles)
+function main(currentLine, botName, updatedFiles, deletedFiles)
   loadUpdatedFiles(updatedFiles)
-  parseWithPlugins(currentLine)
+  parseWithPlugins(currentLine, botName)
 end
 
 function loadUpdatedFiles(updatedFiles)
-  for _,file in ipairs(updatedFiles) do 
+  for _,file in ipairs(updatedFiles) do
     local plugin = dofile(file)
     --Remove older version of updated plugins
      for i,currentPlugin in ipairs(plugins) do
@@ -26,9 +26,9 @@ function loadUpdatedFiles(updatedFiles)
   end
 end
 
-function parseWithPlugins(currentLine)
+function parseWithPlugins(currentLine, botName)
   for _,plugin in ipairs(plugins) do 
     local parser = plugin.parseFunction
-    parser(currentLine)
+    parser(currentLine, botName)
   end
 end
