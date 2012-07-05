@@ -288,10 +288,14 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     cout << "Shutting down...";
     return SHUTDOWN;
   }
-  else if (stringSearch(str, "kiwi: report joe status start"))
+  else if (stringSearch(str, "kiwi: report joe status start")) {
+    outputToChannel("I'm all over this, don't you fear.");
     reportJoeStatus = true;
-  else if (stringSearch(str, "kiwi: report joe status stop"))
+  }
+  else if (stringSearch(str, "kiwi: report joe status stop")) {
+    outputToChannel("Alright then, consider my eyes un-peeled.");
     reportJoeStatus = false;
+  }
 
   if (reportJoeStatus) {
     string fingerJoe = "finger jbw";
