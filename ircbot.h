@@ -44,6 +44,7 @@ public:
 
   bool stringSearch(std::string toSearch, std::string searchFor);
   std::string checkServerMessages (char*, size_t);
+  void saveData();
 
   char * timeNow();
 

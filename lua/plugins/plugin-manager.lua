@@ -16,4 +16,10 @@ function managePlugins(request)
     sendLuaMessage("Plugins loaded: " .. plugin_list)
   end
 end
-return {name="Plugin Manager", description="For managing plugins within IRC", parseFunction=managePlugins}
+
+function saveData()
+  print ("Saving plugin-manager.lua data...")
+end
+
+return {name="Plugin Manager", description="For managing plugins within IRC",
+	parseFunction=managePlugins, saveDataFunction=saveData}

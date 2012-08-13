@@ -38,6 +38,11 @@ function animalParse(currentLine)
   end
 end
 
-return {name="Animal Parser", description="Parses greetings for the kiwi", parseFunction=animalParse}
+function saveData ()
+  print ("Saving animal.lua data...")
+end
+
+return {name="Animal Parser", description="Parses greetings for the kiwi",
+	parseFunction=animalParse, saveDataFunction=saveData}
 
 

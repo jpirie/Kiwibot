@@ -248,6 +248,19 @@ void IrcBot::sendPong(string buf) {
   sendMessage(reply);
 }
 
+void IrcBot::saveData() {
+    // get ready to call the "main" function
+    lua_getglobal(luaState, "savePluginData");
+
+    // call the global function that's been assigned (0 denotes the number of parameters)
+    int errors = lua_pcall(luaState, 0, 0, 0);
+
+    if ( errors!=0 ) {
+      std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;
+      lua_pop(luaState, 1); // remove error message
+    }
+}
+
 /* the function which parses the messages that the user sends
  * this should really be in its own file
  */
@@ -272,6 +285,11 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     system("cd ~/repos/kiwibot; git pull http master; git pull http dynamic-plugins");
     cout << "done updating repository." << endl;
     outputToChannel("All done boss! <3");
+  }
+  else if (stringSearch(str, "kiwi: save data")) {
+    cout << "Saving all kiwi data..." << endl;
+    saveData();
+    cout << "Saving all kiwi data..." << endl;
   }
   else if (stringSearch(str, "kiwi: restart")) {
     // outputToChannel("Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");

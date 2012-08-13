@@ -76,4 +76,9 @@ function chessParse(currentLine)
   end
 end
 
-return {name="Chess", description="Allows two users to play chess on the channel", parseFunction=chessParse}
+function saveData()
+  print ("Saving chess.lua data...")
+end
+
+return {name="Chess", description="Allows two users to play chess on the channel",
+	parseFunction=chessParse, saveDataFunction=saveData}
