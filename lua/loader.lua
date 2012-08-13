@@ -8,9 +8,9 @@
 plugins = {}
 loadedPlugins = {}
 
-function main(currentLine, updatedFiles, deletedFiles)
+function main(currentLine, botName, updatedFiles, deletedFiles)
   loadUpdatedFiles(updatedFiles)
-  parseWithPlugins(currentLine)
+  parseWithPlugins(currentLine, botName)
 end
 
 function savePluginData()
@@ -33,9 +33,9 @@ function loadUpdatedFiles(updatedFiles)
   end
 end
 
-function parseWithPlugins(currentLine)
+function parseWithPlugins(currentLine, botName)
   for _,plugin in ipairs(plugins) do
     local parser = plugin.parseFunction
-    parser(currentLine)
+    parser(currentLine, botName)
   end
 end

@@ -21,8 +21,10 @@ public:
   bool setup;
   int outputToChannel(std::string);
 
+  int getBotName(lua_State*);
   void init(std::string);
 
+  std::string getBotName();
   int mainLoop();
 
  private:
@@ -49,7 +51,6 @@ public:
   char * timeNow();
 
   int sendMessage(std::string);
-  //int sendLuaMessage(lua_State*);
 
   void sendPong(std::string buf);
 

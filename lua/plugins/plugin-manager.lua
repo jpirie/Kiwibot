@@ -1,5 +1,5 @@
 
-function managePlugins(request)
+function managePlugins(request, botName)
   request = request:lower()
   if (string.find(request, "plugin list")) then
     local plugin_list = ""
