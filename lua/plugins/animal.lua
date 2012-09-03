@@ -30,13 +30,12 @@ function animalParse(currentLine, botName)
       if (string.find(currentLine, greeting.." kiwi")) then
 	sendLuaMessage("hi, CREE!")
       end
-      -- end
+    end
 
-      -- check for goodbye messages
-      for _,farewells in pairs(byeSynonyms) do
-       	if (string.find(currentLine, farewells.." kiwi")) then
-       	  sendLuaMessage("Laters, I'll keep this channel in check for you, have no fear!")
-      	end
+    -- check for goodbye messages
+    for _,farewells in pairs(byeSynonyms) do
+      if (string.find(currentLine, farewells.." kiwi")) then
+	sendLuaMessage("Laters, I'll keep this channel in check for you, have no fear!")
       end
     end
   end
