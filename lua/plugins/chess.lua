@@ -53,7 +53,7 @@ function pawnMove(move)
   if (currentBoardValue == " ") then
 
     --check that the player is coming from a valid square
-    
+
     sendLuaMessage("Pawn to "..move)
   else
     sendLuaMessage(invalidMove)

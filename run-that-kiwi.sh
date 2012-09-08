@@ -32,7 +32,7 @@ do
     then
 	# this is currently disabled, kiwi cannot restart
         # this is because when using an ssh connection to spawn a process, which is then disowned,
-        # which then tries to spawn processes of its own, kiwibot cannot be found (a shell isn't running?)
+        # which then tries to spawn processes of its own, access is denied. Probably some user issue.
 	echo "it wants a reboot"
 	echo "restart value returned. make clean and kiwibot..." >> run-that-kiwi-log
 	make clean && make kiwibot

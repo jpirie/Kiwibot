@@ -2,7 +2,7 @@
 -- jpirie: should these be in their own plugin file so everything can use synonym lists?
 local helloSynonyms = {"hi", "hello", "ahoy", "avast", "hallo", "bonjour", "pew", "pow", "hey", "evening", "morning", "afternoon", "prevening", "greetings", "howdy", "hiya"}
 local byeSynonyms = {"bye", "night", "n8", "ciao", "later", "in a bit", "nate"}
-local thanksSynonyms = {"WOW! Thanks!", "omnomnomnom", "OMNOM", "Ooh, delicious", "tasty tastiness", "mm mm mmmmm", "for me? Wow", "Aww, thanks!"}
+local thanksSynonyms = {"WOW! Thanks!", "omnomnomnom", "OMNOM", "Ooh, delicious", "tasty tastiness", "mm mm mmmmm", "for me? Woah. <3", "Aww, thanks!"}
 
 -- simple function that looks for 'hi kiwi'
 -- we should really be looking for regexps or something, not
@@ -21,6 +21,7 @@ function animalParse(currentLine, botName)
     end
   end
   if (string.find(currentLine, "feeds kiwi with")) then
+    -- we should add points to the user that feeds kiwi so that it loves that user more
     sendLuaMessage(thanksSynonyms[math.random(#thanksSynonyms)])
   elseif (string.find(currentLine, "kiwi: what is your name")) then
     sendLuaMessage(botName)
