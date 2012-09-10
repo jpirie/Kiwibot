@@ -1,7 +1,5 @@
-
 function managePlugins(request, botName)
-  request = request:lower()
-  if (string.find(request, "plugin list")) then
+  local function listPlugins(request)
     local plugin_list = ""
     for i,plugin in ipairs(plugins) do
       local name = plugin.name
@@ -15,11 +13,15 @@ function managePlugins(request, botName)
     end
     sendLuaMessage("Plugins loaded: " .. plugin_list)
   end
+  request = request:lower()
+  if (string.find(request, "plugin list")) then
+    listPlugins(request)
+  end
 end
 
 function saveData()
   print ("Saving plugin-manager.lua data...")
 end
 
-return {name="Plugin Manager", description="For managing plugins within IRC",
-	parseFunction=managePlugins, saveDataFunction=saveData}
+return {name="Plugin Manager", description="For managing plugins within IRC", 
+        parseFunction=managePlugins, saveDataFunction=saveData}
