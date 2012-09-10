@@ -8,6 +8,8 @@
 plugins = {}
 loadedPlugins = {}
 
+
+
 function main(currentLine, botName, updatedFiles, deletedFiles)
   loadUpdatedFiles(updatedFiles)
   parseWithPlugins(currentLine, botName)
