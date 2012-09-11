@@ -6,7 +6,7 @@ using namespace std;
 int main() {
 
   // set nick and channel information
-  string nick = "KaffinatedKiwi2";
+  string nick = "KaffinatedKiwi";
   string channel = "#caffeine-addicts";
 
   /* sets nickname and user information for the bot */

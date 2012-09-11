@@ -2,13 +2,15 @@ function managePlugins(request, botName)
 
   local function listPlugins(request)
     local plugin_list = ""
+    local first_plugin = false
     for i,plugin in ipairs(plugins) do
       local name = plugin.name
       if name ~= "Plugin Manager" then
-        if i == 1  then
-          plugin_list = plugin_list .. plugin.name 
+        if first_plugin == false  then
+          plugin_list = plugin_list .. plugin.name
+	  first_plugin = true
         else
-          plugin_list = plugin_list .. ", " .. plugin.name 
+          plugin_list = plugin_list .. ", " .. plugin.name
         end
       end
     end
