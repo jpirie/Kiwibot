@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <map>
 #include <vector>
+#include <ctime>
+#include <iomanip>
 
 #include "ircbot.h"
 
@@ -23,16 +25,22 @@ using namespace std;
 #define DATA_SIZE 256
 
 // define different logged in states that joe can take
+// jpirie: finger has been removed on HW MACS system. I need to edit this.
 #define NOT_LOGGED_IN 1
 #define LOGGED_IN_REMOTE 2
 #define LOGGED_IN_PHYSICALLY 2
 #define JOE_UNKNOWN 3
 
+// a flag to let us know if we are now connected to channel (not receiving more startup messages)
 bool connected;
+
+// a boolean to toggle whether history is being logged
+bool loggingHistory = true;
 
 /* this needs to be a global variable because of a funky issue with the fact
    that C++ functions need specific signatures for lua to call them */
 string channelSendString = "";
+string channelName = "";
 
 int connectionSocket;
 
@@ -69,8 +77,6 @@ IrcBot::~IrcBot() {
  * we need a new function because C++ functions must have a specific signature
  * if lua functions are to call them */
 int sendLuaMessage(lua_State *luaState) {
-
-  // the channel name should not be hard coded here, change this.
   string msg = channelSendString;
   lua_gettop(luaState);
 
@@ -104,6 +110,7 @@ std::string runProcessWithReturn(const char* cmd) {
 void IrcBot::init(string channel) {
 
   channelSendString = "PRIVMSG "+channel+" :";
+  channelName = channel;
 
   // set up our fun friend - the kiwi
   Kiwi kiwi = Kiwi();
@@ -176,13 +183,11 @@ int IrcBot::checkAndParseMessages() {
 
   int botStatus;
 
-  // handle the message
-  if (message != "")
-    botStatus = parseMessage(message, this->kiwi);
-
   // check for ping messages
   if (stringSearch(message,"PING "))
     sendPong(message);
+  else if (message != "")
+    botStatus = parseMessage(message, this->kiwi);
 
   return botStatus;
 }
@@ -216,7 +221,7 @@ string IrcBot::checkServerMessages(char* buffer, size_t size) {
   string str = "";
   str.assign(buffer);
   if (str != "")
-    cout << "received message: " << str << "\n" << endl;
+    cout << "received message: " << str << endl;
   return str;
 }
 
@@ -261,11 +266,83 @@ void IrcBot::saveData() {
     }
 }
 
+/* check to see if there is a history log file available
+ * if there isn't, then create one and add the new string received
+ * if there is, open it in append mode and add the new string received */
+std::string writeHistory(string str) {
+
+  if (!connected)
+    return str;
+
+   runProcessWithReturn("mkdir -p history/");
+   // current date/time based on current system
+   time_t now = time(0);
+   tm *ltm = localtime(&now);
+
+   // calculate various parts of the current time
+   int year = 1900 + ltm->tm_year;
+   int month = 1 + ltm->tm_mon;
+   int day = ltm->tm_mday;
+   int hour = ltm->tm_hour;
+   int minute = ltm->tm_min;
+   int second = ltm->tm_sec;
+
+   // figure out the name of the current history log file
+   std::ostringstream buffer;
+   buffer << "history/" << year;
+   if (month >= 10)  buffer << "-" << month;
+   else              buffer << "-0" << month;
+   if (day >= 10)    buffer << "-" << day;
+   else              buffer << "-0" << day;
+   buffer << ".log";
+
+   // set it to a permanant string s othe ostringstreams don't overwrite one another
+   string filename = buffer.str();
+   const char* filenamePerm = filename.c_str();
+
+   // prefix the time to the string received
+   std::ostringstream historyEntry;
+   if (hour >= 10)   historyEntry << hour;
+   else              historyEntry << "0" << hour;
+   if (minute >= 10) historyEntry << ":" << minute;
+   else              historyEntry << ":0" << minute;
+   if (second >= 10) historyEntry << ":" << second;
+   else              historyEntry << ":0" << second;
+
+   // take just the user string, not any of the other stuff
+   size_t findUserMessage = str.find(channelName);
+   if (findUserMessage != string::npos) {
+     size_t findUsername = str.find("!");
+     if (findUsername != string::npos) {
+       //remove the first char as it's a colon, don't include the ! after the username
+       str = str.substr(1, findUsername-1) + ": " + str.substr(int(findUserMessage)+channelName.size()+2);
+       cout << "Handling this string: " << str << endl;
+     }
+   }
+
+   historyEntry << " " << str;
+
+   FILE * pFile;
+   pFile = fopen (filenamePerm,"a");
+   if (pFile!=NULL) {
+     fputs (historyEntry.str().c_str(),pFile);
+     fclose (pFile);
+   }
+
+   // this should not return the trimmed string, another function should do this
+   return str;
+}
+
 /* the function which parses the messages that the user sends
  * this should really be in its own file
  */
 int IrcBot::parseMessage(string str, Kiwi kiwi) {
-  cout << "Handling this string: " << str << endl;
+
+  /* the returned str is just what the user text is without the IRC prefix information
+   * note: this should not be done this way, a function should be called which has the
+   *       sole purpose of getting the user text from the full message */
+  if (loggingHistory)
+    str = writeHistory(str);
 
   if (stringSearch(str, "End of /NAMES list"))
     connected = true;
@@ -278,6 +355,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
     // kiwi: plugin list is handled in the plugin loader
     outputToChannel("\"plugin list\". Lists the current plugins and their activation status.");
+    outputToChannel("\"history <start|stop>\". Starts/stops logging channel conversation.");
   }
   else if (stringSearch(str, "kiwi: update repo")) {
     cout << "Updating repository..." << endl;
@@ -305,6 +383,22 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     close (connectionSocket);  //close the open socket
     cout << "Shutting down...";
     return SHUTDOWN;
+  }
+  else if (stringSearch(str, "kiwi: history start")) {
+    if (loggingHistory)
+       outputToChannel("I'm already keeping my ears peeled for tasty parsable information!");
+    else {
+       loggingHistory = true;
+       outputToChannel("My ears are now open, I shall store future conversations for tasty parsing later.");
+    }
+  }
+  else if (stringSearch(str, "kiwi: history stop")) {
+    if (loggingHistory) {
+       loggingHistory = false;
+       outputToChannel("Ah I see, cunning secret conversations. I know not of what you speak, your sneakrets are safe with me.");
+    }
+    else
+       outputToChannel("My ears are already shut to your sneakiness. I'll keep it secret. I'll keep it safe.");
   }
   else if (stringSearch(str, "kiwi: report joe status start")) {
     outputToChannel("I'm all over this, don't you fear.");
