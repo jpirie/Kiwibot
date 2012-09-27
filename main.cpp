@@ -6,8 +6,8 @@ using namespace std;
 int main() {
 
   // set nick and channel information
-  string nick = "KaffinatedKiwi_jpirie";
-  string channel = "#caffeine-addicts-test";
+  string nick = "KaffinatedKiwi";
+  string channel = "#caffeine-addicts";
 
   /* sets nickname and user information for the bot */
   IrcBot bot = IrcBot(nick,"USER guest tolmoon tolsun :Ronnie Regan");
