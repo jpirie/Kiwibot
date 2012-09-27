@@ -101,7 +101,7 @@ std::string runProcessWithReturn(const char* cmd) {
 
 /* initialises the irc bot. Gives birth to a new kiwi,
    and sets of sockets for communication */
-void IrcBot::init(string channel) {
+void IrcBot::init(string channel, string password) {
 
   channelSendString = "PRIVMSG "+channel+" :";
 
@@ -132,6 +132,8 @@ void IrcBot::init(string channel) {
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
+  cout << "connecting to server..." << endl;
+
   if ((getaddrinfo("irc.freenode.net","6667",&hints,&serverInfo)) != 0) {
     cout << "Error getting address information. Exiting.";
     return;
@@ -158,11 +160,17 @@ void IrcBot::init(string channel) {
   sendMessage(user);
   checkAndParseMessages();
 
-  string joinMessage = "JOIN ";
-  joinMessage += channel;
+  // send authentication to NickServ if kiwi set with password
+  if (password != "") {
+    string authMessage = "PRIVMSG NickServ identify" + password;
+    sendMessage(authMessage);
+  }
 
   // join the channel
+  string joinMessage = "JOIN ";
+  joinMessage += channel;
   sendMessage(joinMessage);
+
   checkAndParseMessages();
 }
 

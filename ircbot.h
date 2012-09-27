@@ -22,7 +22,7 @@ public:
   int outputToChannel(std::string);
 
   int getBotName(lua_State*);
-  void init(std::string);
+  void init(std::string, std:: string);
 
   std::string getBotName();
   int mainLoop();
