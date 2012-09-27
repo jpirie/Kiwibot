@@ -169,9 +169,10 @@ void IrcBot::init(string channel, string password) {
 
   // send authentication to NickServ if kiwi set with password
   if (password != "") {
-    string authMessage = "PRIVMSG NickServ identify" + password;
+    string authMessage = "PRIVMSG NickServ : identify " + nick + " " + password;
     sendMessage(authMessage);
   }
+  checkAndParseMessages();
 
   // join the channel
   string joinMessage = "JOIN ";
