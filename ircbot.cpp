@@ -275,20 +275,43 @@ void IrcBot::saveData() {
     }
 }
 
+// returns the username of the full server message
+std::string getUsername(string fullMessage) {
+  string username = "";
+  size_t findUsername = fullMessage.find("!");
+  if (findUsername != string::npos)
+    username = fullMessage.substr(1, findUsername-1); // we leave out the first character, it's irrelevant
+  return username;
+}
+
+// returns the server information part of the full server message
+std::string getServerInfo(string fullMessage) {
+  size_t findEndOfServerInfo = fullMessage.find(channelName);
+  if (findEndOfServerInfo != string::npos)
+    return fullMessage.substr(1, int(findEndOfServerInfo)+channelName.size());
+  else
+      return fullMessage;
+}
+
+std::string getUserMessage(string fullMessage) {
+   size_t findEndOfServerInfo = fullMessage.find(channelName);
+   if (findEndOfServerInfo != string::npos)
+      return fullMessage.substr(int(findEndOfServerInfo)+channelName.size()+2);
+   else
+      return "";
+}
 /* check to see if there is a history log file available
  * if there isn't, then create one and add the new string received
  * if there is, open it in append mode and add the new string received */
-std::string writeHistory(string str) {
+void writeHistory(string username, string serverInfo, string userMessage) {
 
-  if (!connected)
-    return str;
+   // the line that will be output to the history log
+   string historyString = "";
 
    runProcessWithReturn("mkdir -p history/");
    // current date/time based on current system
    time_t now = time(0);
    tm *ltm = localtime(&now);
-
-   // calculate various parts of the current time
    int year = 1900 + ltm->tm_year;
    int month = 1 + ltm->tm_mon;
    int day = ltm->tm_mday;
@@ -305,7 +328,7 @@ std::string writeHistory(string str) {
    else              buffer << "-0" << day;
    buffer << ".log";
 
-   // set it to a permanant string s othe ostringstreams don't overwrite one another
+   // set it to a permanant string so the ostringstreams don't overwrite one another
    string filename = buffer.str();
    const char* filenamePerm = filename.c_str();
 
@@ -318,28 +341,40 @@ std::string writeHistory(string str) {
    if (second >= 10) historyEntry << ":" << second;
    else              historyEntry << ":0" << second;
 
-   // take just the user string, not any of the other stuff
-   size_t findUserMessage = str.find(channelName);
-   if (findUserMessage != string::npos) {
-     size_t findUsername = str.find("!");
-     if (findUsername != string::npos) {
-       //remove the first char as it's a colon, don't include the ! after the username
-       str = str.substr(1, findUsername-1) + ": " + str.substr(int(findUserMessage)+channelName.size()+2);
-       cout << "Handling this string: " << str << endl;
+   if (userMessage == "") {
+      // there is no user message text, perhaps they are joining the channel
+      if (serverInfo.find("JOIN") != string::npos)
+         historyString = "=> " + username + " joined the channel\r\n";
+
+      // for detecting them leaving the channel
+      if (serverInfo.find("PART") != string::npos)
+         historyString = "<= " + username + " left the channel\r\n";
+
+      // detection of leaving IRC altogether via QUIT
+      if (serverInfo.find("QUIT") != string::npos)
+         historyString = "<= " + username + " quit the channel\r\n";
+
+      // detection of leaving IRC altogether via QUIT
+      size_t nickMessage = serverInfo.find("NICK");
+      if (nickMessage != string::npos) {
+      	// we use 6 here because the length of NICK: <new nickname> between N and < is 6.
+      	historyString = "+ " + username + " changed nickname to " + serverInfo.substr(int(nickMessage)+6);
+      }
+   }
+   else
+     historyString = username + ": " + userMessage;
+
+
+   if (historyString != "") {
+     historyEntry << " " << historyString;
+
+     FILE * pFile;
+     pFile = fopen (filenamePerm,"a");
+     if (pFile!=NULL) {
+       fputs (historyEntry.str().c_str(),pFile);
+       fclose (pFile);
      }
    }
-
-   historyEntry << " " << str;
-
-   FILE * pFile;
-   pFile = fopen (filenamePerm,"a");
-   if (pFile!=NULL) {
-     fputs (historyEntry.str().c_str(),pFile);
-     fclose (pFile);
-   }
-
-   // this should not return the trimmed string, another function should do this
-   return str;
 }
 
 /* the function which parses the messages that the user sends
@@ -347,11 +382,15 @@ std::string writeHistory(string str) {
  */
 int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
+  string username = getUsername(str);
+  string serverInfo = getServerInfo(str);
+  string userMessage = getUserMessage(str);
+
   /* the returned str is just what the user text is without the IRC prefix information
    * note: this should not be done this way, a function should be called which has the
    *       sole purpose of getting the user text from the full message */
-  if (loggingHistory)
-    str = writeHistory(str);
+  if (loggingHistory && connected)
+    writeHistory(username, serverInfo, userMessage);
 
   if (stringSearch(str, "End of /NAMES list"))
     connected = true;
