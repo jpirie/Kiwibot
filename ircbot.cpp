@@ -421,7 +421,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   else if (stringSearch(str, "kiwi: give history")) {
     string historyCommand = "tar -czf kiwi-history.tar.gz history/; mv kiwi-history.tar.gz ~/public_html/";
     runProcessWithReturn(historyCommand.c_str());
-    outputToChannel("Latest history tarball available at http://www.macs.hw.ac.uk/~jp95/kiwi-history.tar.gz. (Delete web tarball with command: 'kiwi: hide history')");
+    outputToChannel("Latest history tarball available at http://www.macs.hw.ac.uk/~jp95/kiwi-history.tar.gz.");
   }
   else if (stringSearch(str, "kiwi: hide history")) {
     string historyCommand = "rm ~/public_html/kiwi-history.tar.gz";
