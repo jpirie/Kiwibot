@@ -400,7 +400,8 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     outputToChannel("\"update repo\". Updates the repository I sit in by pulling from the public http link.");
     //outputToChannel("\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
     outputToChannel("\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
-
+    outputToChannel("\"give history\". Creates tarball of history and puts link on web");
+    outputToChannel("\"hide history\". Removes existing tarball of history on web");
     // kiwi: plugin list is handled in the plugin loader
     outputToChannel("\"plugin list\". Lists the current plugins and their activation status.");
     outputToChannel("\"history <start|stop>\". Starts/stops logging channel conversation.");
@@ -416,6 +417,16 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     cout << "Saving all kiwi data..." << endl;
     saveData();
     cout << "Saving all kiwi data..." << endl;
+  }
+  else if (stringSearch(str, "kiwi: give history")) {
+    string historyCommand = "tar -czf kiwi-history.tar.gz history/; mv history*.tar.gz ~/public_html/";
+    runProcessWithReturn(historyCommand.c_str());
+    outputToChannel("Latest history tarball available at http://www.macs.hw.ac.uk/~jp95/kiwi-history.tar.gz. (Delete web tarball with command: 'kiwi: hide history')");
+  }
+  else if (stringSearch(str, "kiwi: hide history")) {
+    string historyCommand = "rm ~/public_html/kiwi-history.tar.gz";
+    runProcessWithReturn(historyCommand.c_str());
+    outputToChannel("Tarball deleted.");
   }
   else if (stringSearch(str, "kiwi: restart")) {
     // outputToChannel("Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
