@@ -6,8 +6,8 @@ using namespace std;
 int main(int argc, char* argv[]) {
 
   // set nick and channel information
-  string nick = "KaffinatedKiwi_jpirie";
-  string channel = "#caffeine-addicts-test";
+  string nick = "KaffinatedKiwi";
+  string channel = "#caffeine-addicts";
   string password = "";
 
   /* the first argument is the password for kiwi to authenticate
