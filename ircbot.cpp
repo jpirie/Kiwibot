@@ -37,10 +37,13 @@ bool connected;
 // a boolean to toggle whether history is being logged
 bool loggingHistory = true;
 
+vector<string> authenticatedUsernames;
+
 /* this needs to be a global variable because of a funky issue with the fact
    that C++ functions need specific signatures for lua to call them */
 string channelSendString = "";
 string channelName = "";
+string ircbotName = "";
 
 int connectionSocket;
 
@@ -54,6 +57,7 @@ int SHUTDOWN  = 2;
 
 IrcBot::IrcBot(string nick, string user) {
   this->nick = nick;
+  ircbotName = nick;
   this->user  = user;
   this->reportJoeStatus = false;
   this->joeStatus = 0;
@@ -73,23 +77,6 @@ IrcBot::~IrcBot() {
   close (connectionSocket);
 }
 
-/* same as sendMessage but called by the Lua code
- * we need a new function because C++ functions must have a specific signature
- * if lua functions are to call them */
-int sendLuaMessage(lua_State *luaState) {
-  string msg = channelSendString;
-  lua_gettop(luaState);
-
-  // 1 is the first index of the array sent back (we only send one string to this function)
-  msg  += lua_tostring(luaState, 1);
-
-  // add carridge return and new line to the end of messages
-  msg += "\r\n";
-
-  send(connectionSocket,msg.c_str(),msg.length(),0);
-  return 0;
-}
-
 std::string runProcessWithReturn(const char* cmd) {
     FILE* pipe = popen(cmd, "r");
     if (!pipe)
@@ -103,6 +90,110 @@ std::string runProcessWithReturn(const char* cmd) {
     }
     pclose(pipe);
     return stdout;
+}
+
+// searches for a string in another given string
+bool stringSearch(string toSearch, string searchFor) {
+  return (toSearch.find(searchFor) != string::npos);
+}
+
+
+/* check to see if there is a history log file available
+ * if there isn't, then create one and add the new string received
+ * if there is, open it in append mode and add the new string received */
+void writeHistory(string username, string serverInfo, string userMessage) {
+
+   if (!loggingHistory || !connected || stringSearch(userMessage, "kiwi: history start") || stringSearch(userMessage, "kiwi: history stop"))
+     return;
+
+   // the line that will be output to the history log
+   string historyString = "";
+
+   runProcessWithReturn("mkdir -p history/");
+   // current date/time based on current system
+   time_t now = time(0);
+   tm *ltm = localtime(&now);
+   int year = 1900 + ltm->tm_year;
+   int month = 1 + ltm->tm_mon;
+   int day = ltm->tm_mday;
+   int hour = ltm->tm_hour;
+   int minute = ltm->tm_min;
+   int second = ltm->tm_sec;
+
+   // figure out the name of the current history log file
+   std::ostringstream buffer;
+   buffer << "history/" << year;
+   if (month >= 10)  buffer << "-" << month;
+   else              buffer << "-0" << month;
+   if (day >= 10)    buffer << "-" << day;
+   else              buffer << "-0" << day;
+   buffer << ".log";
+
+   // set it to a permanant string so the ostringstreams don't overwrite one another
+   string filename = buffer.str();
+   const char* filenamePerm = filename.c_str();
+
+   // prefix the time to the string received
+   std::ostringstream historyEntry;
+   if (hour >= 10)   historyEntry << hour;
+   else              historyEntry << "0" << hour;
+   if (minute >= 10) historyEntry << ":" << minute;
+   else              historyEntry << ":0" << minute;
+   if (second >= 10) historyEntry << ":" << second;
+   else              historyEntry << ":0" << second;
+
+   if (userMessage != "")
+      historyString = username + ": " + userMessage;
+
+   // there is no user message text, perhaps they are joining the channel
+   if (serverInfo.find("JOIN") != string::npos)
+      historyString = "=> " + username + " joined the channel\r\n";
+
+   // for detecting them leaving the channel
+   if (serverInfo.find("PART") != string::npos)
+      historyString = "<= " + username + " left the channel\r\n";
+
+   // detection of leaving IRC altogether via QUIT
+   if (serverInfo.find("QUIT") != string::npos)
+      historyString = "<= " + username + " quit the channel\r\n";
+
+   // detection of leaving IRC altogether via QUIT
+   size_t nickMessage = serverInfo.find("NICK");
+   if (nickMessage != string::npos)
+      // we use 6 here because the length of NICK: <new nickname> between N and < is 6.
+      historyString = "+ " + username + " changed nickname to " + serverInfo.substr(int(nickMessage)+6);
+
+   if (historyString != "") {
+     historyEntry << " " << historyString;
+
+     FILE * pFile;
+     pFile = fopen (filenamePerm,"a");
+     if (pFile!=NULL) {
+       fputs (historyEntry.str().c_str(),pFile);
+       fclose (pFile);
+     }
+   }
+}
+
+/* same as sendMessage but called by the Lua code
+ * we need a new function because C++ functions must have a specific signature
+ * if lua functions are to call them */
+int sendLuaMessage(lua_State *luaState) {
+  string msg = channelSendString;
+  lua_gettop(luaState);
+
+  // 1 is the first index of the array sent back (we only send one string to this function)
+  string messageOnly = lua_tostring(luaState, 1);
+  msg  += messageOnly;
+
+  // add carridge return and new line to the end of messages
+  msg += "\r\n";
+
+  // update the history file
+  writeHistory(ircbotName, "", messageOnly + "\r\n");
+
+  send(connectionSocket,msg.c_str(),msg.length(),0);
+  return 0;
 }
 
 /* initialises the irc bot. Gives birth to a new kiwi,
@@ -213,11 +304,6 @@ int IrcBot::mainLoop () {
   }
 }
 
-// searches for a string in another given string
-bool IrcBot::stringSearch(string toSearch, string searchFor) {
-  return (toSearch.find(searchFor) != string::npos);
-}
-
 // checks for incoming server messages
 string IrcBot::checkServerMessages(char* buffer, size_t size) {
   // get any messages that are incoming
@@ -236,15 +322,20 @@ string IrcBot::checkServerMessages(char* buffer, size_t size) {
 
 // sends an outgoing message to the IRC server
 int IrcBot::sendMessage(string msg) {
-  // add carridge return and new line to the end of messages
   msg += "\r\n";
-
   // send the message to the server
   return send(connectionSocket,msg.c_str(),msg.length(),0);
 }
 
+// outputs a message to the irc channel
 int IrcBot::outputToChannel(string msg) {
+  writeHistory(this->nick.c_str(), "", msg+"\r\n");
   sendMessage(channelSendString+msg);
+}
+
+// outputs a message to the irc channel
+int IrcBot::outputToUser(string username, string msg) {
+  sendMessage("PRIVMSG "+username+" :"+msg);
 }
 
 // sends the pong packet so the IRC server knows that we're alive
@@ -300,82 +391,6 @@ std::string getUserMessage(string fullMessage) {
    else
       return "";
 }
-/* check to see if there is a history log file available
- * if there isn't, then create one and add the new string received
- * if there is, open it in append mode and add the new string received */
-void writeHistory(string username, string serverInfo, string userMessage) {
-
-   // the line that will be output to the history log
-   string historyString = "";
-
-   runProcessWithReturn("mkdir -p history/");
-   // current date/time based on current system
-   time_t now = time(0);
-   tm *ltm = localtime(&now);
-   int year = 1900 + ltm->tm_year;
-   int month = 1 + ltm->tm_mon;
-   int day = ltm->tm_mday;
-   int hour = ltm->tm_hour;
-   int minute = ltm->tm_min;
-   int second = ltm->tm_sec;
-
-   // figure out the name of the current history log file
-   std::ostringstream buffer;
-   buffer << "history/" << year;
-   if (month >= 10)  buffer << "-" << month;
-   else              buffer << "-0" << month;
-   if (day >= 10)    buffer << "-" << day;
-   else              buffer << "-0" << day;
-   buffer << ".log";
-
-   // set it to a permanant string so the ostringstreams don't overwrite one another
-   string filename = buffer.str();
-   const char* filenamePerm = filename.c_str();
-
-   // prefix the time to the string received
-   std::ostringstream historyEntry;
-   if (hour >= 10)   historyEntry << hour;
-   else              historyEntry << "0" << hour;
-   if (minute >= 10) historyEntry << ":" << minute;
-   else              historyEntry << ":0" << minute;
-   if (second >= 10) historyEntry << ":" << second;
-   else              historyEntry << ":0" << second;
-
-   if (userMessage == "") {
-      // there is no user message text, perhaps they are joining the channel
-      if (serverInfo.find("JOIN") != string::npos)
-         historyString = "=> " + username + " joined the channel\r\n";
-
-      // for detecting them leaving the channel
-      if (serverInfo.find("PART") != string::npos)
-         historyString = "<= " + username + " left the channel\r\n";
-
-      // detection of leaving IRC altogether via QUIT
-      if (serverInfo.find("QUIT") != string::npos)
-         historyString = "<= " + username + " quit the channel\r\n";
-
-      // detection of leaving IRC altogether via QUIT
-      size_t nickMessage = serverInfo.find("NICK");
-      if (nickMessage != string::npos) {
-      	// we use 6 here because the length of NICK: <new nickname> between N and < is 6.
-      	historyString = "+ " + username + " changed nickname to " + serverInfo.substr(int(nickMessage)+6);
-      }
-   }
-   else
-     historyString = username + ": " + userMessage;
-
-
-   if (historyString != "") {
-     historyEntry << " " << historyString;
-
-     FILE * pFile;
-     pFile = fopen (filenamePerm,"a");
-     if (pFile!=NULL) {
-       fputs (historyEntry.str().c_str(),pFile);
-       fclose (pFile);
-     }
-   }
-}
 
 /* the function which parses the messages that the user sends
  * this should really be in its own file
@@ -389,46 +404,98 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   /* the returned str is just what the user text is without the IRC prefix information
    * note: this should not be done this way, a function should be called which has the
    *       sole purpose of getting the user text from the full message */
-  if (loggingHistory && connected)
-    writeHistory(username, serverInfo, userMessage);
+  writeHistory(username, serverInfo, userMessage);
 
   if (stringSearch(str, "End of /NAMES list"))
     connected = true;
 
-  if (stringSearch(str, "kiwi: help")) {
-    outputToChannel("I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
-    outputToChannel("\"update repo\". Updates the repository I sit in by pulling from the public http link.");
-    //outputToChannel("\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
-    outputToChannel("\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
-    outputToChannel("\"give history\". Creates tarball of history and puts link on web");
-    outputToChannel("\"hide history\". Removes existing tarball of history on web");
-    // kiwi: plugin list is handled in the plugin loader
-    outputToChannel("\"plugin list\". Lists the current plugins and their activation status.");
-    outputToChannel("\"history <start|stop>\". Starts/stops logging channel conversation.");
+  if (serverInfo.find("JOIN") != string::npos) {
+    string checkAccess = "PRIVMSG NickServ : ACC " + username;
+    sendMessage(checkAccess);
   }
-  else if (stringSearch(str, "kiwi: update repo")) {
+  // for detecting them leaving the channel
+  if (serverInfo.find("PART") != string::npos || serverInfo.find("QUIT") != string::npos) {
+    std::vector<string>::iterator position = std::find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username);
+    if (position != authenticatedUsernames.end()) // == vector.end() means the element was not found
+      authenticatedUsernames.erase(position);
+  }
+
+  if (stringSearch(userMessage, "kiwi: help")) {
+    outputToUser(username, "I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
+    outputToUser(username, "\"check authentication\". Checks user access information via NickServ.");
+    outputToUser(username, "\"give history\". Creates tarball of history and puts link on web. (Must be simown, sadger, or jpirie)");
+    outputToUser(username, "\"hide history\". Removes existing tarball of history on web (Must be simown, sadger, or jpirie)");
+    outputToUser(username, "\"give op status\". Gives op status (must be sadger, simown, or jpirie)");
+    outputToUser(username, "\"take op status\". Take op status away (must be sadger, simown, or jpirie)");
+    outputToUser(username, "\"update repo\". Updates the repository I sit in by pulling from the public http link.");
+    outputToUser(username, "\"save data\". Saves data of all kiwi's plugins.");
+    //outputToUser(username, "\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
+    outputToUser(username, "\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
+    outputToUser(username, "\"history <start|stop>\". Starts/stops logging channel conversation.");
+    outputToUser(username, "\"plugin list\". Lists the current plugins and their activation status.");
+  }
+  else if (stringSearch(userMessage, "kiwi: update repo")) {
     cout << "Updating repository..." << endl;
     outputToChannel("Update the repo? Sure thing!");
     system("cd ~/repos/kiwibot; git pull http master; git pull http dynamic-plugins");
     cout << "done updating repository." << endl;
     outputToChannel("All done boss! <3");
   }
-  else if (stringSearch(str, "kiwi: save data")) {
+  else if (stringSearch(userMessage, "kiwi: save data")) {
     cout << "Saving all kiwi data..." << endl;
     saveData();
     cout << "Saving all kiwi data..." << endl;
   }
-  else if (stringSearch(str, "kiwi: give history")) {
-    string historyCommand = "tar -czf kiwi-history.tar.gz history/; mv kiwi-history.tar.gz ~/public_html/";
-    runProcessWithReturn(historyCommand.c_str());
-    outputToChannel("Latest history tarball available at http://www.macs.hw.ac.uk/~jp95/kiwi-history.tar.gz.");
+  else if (stringSearch(userMessage, "kiwi: give history")) {
+    if (username == "sadger" || username == "jpirie" || username == "simown") {
+      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
+	string historyCommand = "tar -czf kiwi-history.tar.gz history/; mv kiwi-history.tar.gz ~/public_html/";
+	runProcessWithReturn(historyCommand.c_str());
+	outputToUser(username, "Latest history tarball available at http://www.macs.hw.ac.uk/~jp95/kiwi-history.tar.gz.");
+      }
+      else
+	outputToUser(username, "You must be authenticated with NickServ to use this command.");
+    }
+    else
+      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
   }
-  else if (stringSearch(str, "kiwi: hide history")) {
-    string historyCommand = "rm ~/public_html/kiwi-history.tar.gz";
-    runProcessWithReturn(historyCommand.c_str());
-    outputToChannel("Tarball deleted.");
+  else if (stringSearch(userMessage, "kiwi: hide history")) {
+    if (username == "sadger" || username == "jpirie" || username == "simown") {
+      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
+	string historyCommand = "rm ~/public_html/kiwi-history.tar.gz";
+	runProcessWithReturn(historyCommand.c_str());
+	outputToUser(username, "Tarball deleted.");
+      }
+      else
+	outputToUser(username, "You must be authenticated with NickServ to use this command.");
+    }
+    else
+      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
+
   }
-  else if (stringSearch(str, "kiwi: restart")) {
+  else if (stringSearch(userMessage, "kiwi: give op status")) {
+    if (username == "sadger" || username == "jpirie" || username == "simown") {
+      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end())
+	sendMessage("MODE "+channelName+" +o "+username);
+      else
+	outputToUser(username, "You must be authenticated with NickServ to use this command.");
+    }
+    else
+      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
+  }
+  else if (stringSearch(userMessage, "kiwi: take op status")) {
+    if (username == "sadger" || username == "jpirie" || username == "simown") {
+      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end())
+	sendMessage("MODE "+channelName+" -o "+username);
+      else
+	outputToUser(username, "You must be authenticated with NickServ to use this command.");
+    }
+    else
+      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
+
+
+  }
+  else if (stringSearch(userMessage, "kiwi: restart")) {
     // outputToChannel("Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
     // sendMessage("QUIT");
     // close (connectionSocket);  //close the open socket
@@ -436,22 +503,25 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     // return REBOOT;
 
   }
-  else if (stringSearch(str, "kiwi: shutdown")) {
+  else if (stringSearch(userMessage, "kiwi: shutdown")) {
     outputToChannel("Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
     sendMessage("QUIT");
     close (connectionSocket);  //close the open socket
     cout << "Shutting down...";
     return SHUTDOWN;
   }
-  else if (stringSearch(str, "kiwi: history start")) {
-    if (loggingHistory)
+  else if (stringSearch(userMessage, "kiwi: history start")) {
+    if (loggingHistory) {
+       loggingHistory = false;
        outputToChannel("I'm already keeping my ears peeled for tasty parsable information!");
-    else {
        loggingHistory = true;
+    }
+    else {
        outputToChannel("My ears are now open, I shall store future conversations for tasty parsing later.");
+       loggingHistory = true;
     }
   }
-  else if (stringSearch(str, "kiwi: history stop")) {
+  else if (stringSearch(userMessage, "kiwi: history stop")) {
     if (loggingHistory) {
        loggingHistory = false;
        outputToChannel("Ah I see, cunning secret conversations. I know not of what you speak, your sneakrets are safe with me.");
@@ -459,13 +529,27 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     else
        outputToChannel("My ears are already shut to your sneakiness. I'll keep it secret. I'll keep it safe.");
   }
-  else if (stringSearch(str, "kiwi: report joe status start")) {
+  else if (stringSearch(userMessage, "kiwi: report joe status start")) {
     outputToChannel("I'm all over this, don't you fear.");
     reportJoeStatus = true;
   }
-  else if (stringSearch(str, "kiwi: report joe status stop")) {
+  else if (stringSearch(userMessage, "kiwi: report joe status stop")) {
     outputToChannel("Alright then, consider my eyes un-peeled.");
     reportJoeStatus = false;
+  }
+  else if (stringSearch(userMessage, "kiwi: check authentication")) {
+    outputToChannel("I'll get on the dog and bone to NickServ straight away.");
+    string checkAccess = "PRIVMSG NickServ : ACC " + username;
+    sendMessage(checkAccess);
+  }
+  /* we check the whole string here (str) not the userMessage, because that's not set up
+   * right for NickServ requests */
+  else if (stringSearch(str, "ACC 3") && username == "NickServ") {
+    size_t separatingColon = str.substr(1, str.length()).find(":");
+    // we add two to nicknameStart becuase we ignore the starting colon in the message
+    string newAuthenticatedMember = str.substr(separatingColon+2, str.length()-str.find("ACC")-1);
+    authenticatedUsernames.push_back(newAuthenticatedMember);
+    cout << "New authenticated username: '" << newAuthenticatedMember << "'" << endl;
   }
 
   if (reportJoeStatus) {

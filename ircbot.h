@@ -20,6 +20,7 @@ public:
 
   bool setup;
   int outputToChannel(std::string);
+  int outputToUser(std::string, std::string);
 
   int getBotName(lua_State*);
   void init(std::string, std:: string);
@@ -44,7 +45,6 @@ public:
   bool reportJoeStatus;
   int joeStatus;
 
-  bool stringSearch(std::string toSearch, std::string searchFor);
   std::string checkServerMessages (char*, size_t);
   void saveData();
 
