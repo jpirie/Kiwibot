@@ -88,7 +88,14 @@ end
 
 function saveData()
   print ("Saving chess.lua data...")
+  print ("done!")
 end
 
+function loadData ()
+  print ("Loading chess.lua data...")
+  print ("done!")
+end
+
+
 return {name="Chess", description="Allows two users to play chess on the channel",
-	parseFunction=chessParse, saveDataFunction=saveData}
+	parseFunction=chessParse, saveDataFunction=saveData, loadDataFunction=loadData}

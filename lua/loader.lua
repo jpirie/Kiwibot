@@ -22,6 +22,13 @@ function savePluginData()
   end
 end
 
+function loadPluginData()
+  for _,plugin in ipairs(plugins) do
+    local loadFunction = plugin.loadDataFunction
+    loadFunction()
+  end
+end
+
 function loadUpdatedFiles(updatedFiles)
   for _,file in ipairs(updatedFiles) do
     local plugin = dofile(file)

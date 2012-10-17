@@ -4,10 +4,68 @@
 namesSeen = {}
 seenCommand = "!seen "
 
--- there's an issue where any time this file is changed, the irc bot
--- will reload this file, and wipe the list of namesSeen! So this data
--- should really be saved before the file is reloaded. This problem is
--- common across all plugins.
+function loadData ()
+  print ("Loading last-seen.lua data...")
+  local pluginSaveFile = "plugin-data.sav"           -- name of plugin file
+  local fileHandler = io.open(pluginSaveFile, "r")   -- open in read mode first.
+  local correctSection                               -- true if parsing correct section of data file
+  for line in fileHandler:lines() do                 -- go through all lines in existing file
+    if (line == "[lastseen]") then                   -- look for the lastseen tag
+      correctSection = true
+    elseif (line == "[end]" and correctSection) then -- we're done
+      break
+    elseif (correctSection) then                     -- we're in the right section, add the user to array
+      namesSeen[line:sub(2,(string.find(line, ",")-1))] = line:sub(string.find(line, ",")+2,string.len(line)-1)
+    end
+  end
+  print ("done!")
+end
+
+function saveLastSeenData ()
+  print ("Saving last-seen.lua data...")
+  local pluginSaveFile = "plugin-data.sav"         -- name of plugin file
+  local fileHandler = io.open(pluginSaveFile, "r") -- open in read mode first.
+  local lines = {}                                 -- holds lines we've looped through
+  local remainingFile                              -- holds rest of the file we don't loop through
+  local correctSection                             -- true if parsing correct section of data file
+  for line in fileHandler:lines() do               -- go through all lines in existing file
+    if (line == "[lastseen]") then                 -- look for the lastseen tag
+      correctSection = true
+      lines[#lines + 1] = line                     -- store the current line
+    elseif (line == "[end]" and correctSection) then
+      -- insert the current seen people
+      for key,value in pairs(namesSeen) do
+	lines[#lines + 1] = "("..key..", "..value..")"
+      end
+      lines[#lines + 1] = line                     -- store the current line
+      for line in fileHandler:lines() do           -- go through all lines in existing file
+	lines[#lines + 1] = line                   -- read the rest of the file in
+      end
+      break
+    end
+
+    if (not correctSection) then                   -- if we're not looking at the right section
+      lines[#lines + 1] = line                     -- store the current line
+    end                                            -- we don't want it otherwise
+  end
+  fileHandler:close()                              -- close file, we're ready to open in write mode
+
+  if (not correctSection) then                     -- if we didn't find the section at all
+    lines[#lines + 1] = "[seenall]"                -- put the section in
+    lines[#lines + 1] = "[end]"
+  end
+
+
+  fileHandler = io.open(pluginSaveFile, "w")       -- open the file in write mode
+  for i, line in ipairs(lines) do                  -- loop through line in our ammended array
+    fileHandler:write(line, "\n")                  -- write the line
+  end
+  if (remainingFile ~= nil) then                   -- if we have the rest of the file
+    fileHandler:write(remainingFile)               -- write the rest of the file
+  end
+  fileHandler:close()                              -- close the file
+  print ("done!")
+end
 
 function lastSeenParse(currentLine, botName)
   -- make the current line lower case
@@ -24,7 +82,8 @@ function lastSeenParse(currentLine, botName)
 	end
       end
     end
-    namesSeen[name] = os.date("%H:%M on %A, %B %d, %Y")
+    namesSeen[name] = os.date("%H:%M on %A, %B %d, %Y")                       -- add the user to the seen array
+    saveLastSeenData()                                                        -- update the file to reflect they have been seen
     print("Adding "..name.." to last seen map for time "..namesSeen[name]);
 
   elseif (string.find(currentLine, seenCommand)) then
@@ -39,14 +98,9 @@ function lastSeenParse(currentLine, botName)
   elseif (string.find(currentLine, "!seenall")) then
     for key,value in pairs(namesSeen) do sendLuaMessage("("..key..", "..value..")") end
   end
-
-end
-
-function saveData ()
-  print ("Saving last-seen.lua data...")
 end
 
 return {name="Last Seen", description="Stores when users were last seen on the channel",
-	parseFunction=lastSeenParse, saveDataFunction=saveData}
+	parseFunction=lastSeenParse, saveDataFunction=saveLastSeenData, loadDataFunction=loadData}
 
 

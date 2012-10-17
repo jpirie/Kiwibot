@@ -47,6 +47,7 @@ public:
 
   std::string checkServerMessages (char*, size_t);
   void saveData();
+  void loadData();
 
   char * timeNow();
 

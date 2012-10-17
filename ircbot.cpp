@@ -34,6 +34,9 @@ using namespace std;
 // a flag to let us know if we are now connected to channel (not receiving more startup messages)
 bool connected;
 
+// set to false when we have loaded the data from plugins for the first time
+bool firstPluginLoad = true;
+
 // a boolean to toggle whether history is being logged
 bool loggingHistory = true;
 
@@ -366,6 +369,19 @@ void IrcBot::saveData() {
     }
 }
 
+void IrcBot::loadData() {
+    // get ready to call the "main" function
+    lua_getglobal(luaState, "loadPluginData");
+
+    // call the global function that's been assigned (0 denotes the number of parameters)
+    int errors = lua_pcall(luaState, 0, 0, 0);
+
+    if ( errors!=0 ) {
+      std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;
+      lua_pop(luaState, 1); // remove error message
+    }
+}
+
 // returns the username of the full server message
 std::string getUsername(string fullMessage) {
   string username = "";
@@ -407,7 +423,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   writeHistory(username, serverInfo, userMessage);
 
   if (stringSearch(str, "End of /NAMES list"))
-    connected = true;
+    connected = true;  // intro messages to the server have finished
 
   if (serverInfo.find("JOIN") != string::npos) {
     string checkAccess = "PRIVMSG NickServ : ACC " + username;
@@ -445,6 +461,11 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     cout << "Saving all kiwi data..." << endl;
     saveData();
     cout << "Saving all kiwi data..." << endl;
+  }
+  else if (stringSearch(userMessage, "kiwi: load data")) {
+    cout << "Loading all kiwi data..." << endl;
+    loadData();
+    cout << "done!..." << endl;
   }
   else if (stringSearch(userMessage, "kiwi: give history")) {
     if (username == "sadger" || username == "jpirie" || username == "simown") {
@@ -682,6 +703,11 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
     // call the global function that's been assigned (4 denotes the number of parameters)
     int errors = lua_pcall(luaState, 4, 0, 0);
+
+    if (firstPluginLoad) {
+      loadData();
+      firstPluginLoad = false;
+    }
 
     if ( errors!=0 ) {
       std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;
