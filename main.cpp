@@ -9,6 +9,7 @@ int main(int argc, char* argv[]) {
   string nick = "KaffinatedKiwi";
   string channel = "#caffeine-addicts";
   string password = "";
+  bool connect = true;
 
   int argumentCounter = 1;
 
@@ -60,16 +61,20 @@ int main(int argc, char* argv[]) {
       cout << "\t-d | --debug: Kiwi joins channel '#caffeine-addicts-test' and has nick 'kiwitest'" << endl;
       cout << "\t-h | --help: Displays this help text" << endl;
       argumentCounter++;
+      connect = false;
     }
   }
 
-  IrcBot bot = IrcBot(nick,"USER guest tolmoon tolsun :Ronnie Regan");
+  int botStatus = 0;
+  if (connect) {
+    IrcBot bot = IrcBot(nick,"USER guest tolmoon tolsun :Ronnie Regan");
 
-  //initialise the bot on channel specified in parameter
-  bot.init(channel, password);
+    //initialise the bot on channel specified in parameter
+    bot.init(channel, password);
 
-  /* start the main loop where we look at the messages coming in and out */
-  int botStatus = bot.mainLoop();
+    /* start the main loop where we look at the messages coming in and out */
+    botStatus = bot.mainLoop();
+  }
 
   return botStatus;
 }
