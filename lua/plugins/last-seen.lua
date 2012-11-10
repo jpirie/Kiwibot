@@ -95,7 +95,7 @@ function lastSeenParse(username, serverPart, userMessage, botName)
       sendLuaMessage("I know not of the person you speak of. Quite the mystery indeed.");
     end
   elseif (string.find(userMessage, "!seenall")) then
-    for key,value in pairs(namesSeen) do sendLuaPrivateMessage("("..key..", "..value..")") end
+    for key,value in pairs(namesSeen) do sendLuaPrivateMessage(username, "("..key..", "..value..")") end
   end
 end
 
