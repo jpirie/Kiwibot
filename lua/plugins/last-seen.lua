@@ -67,12 +67,12 @@ function saveLastSeenData ()
   print ("done!")
 end
 
-function lastSeenParse(currentLine, botName)
+function lastSeenParse(username, serverPart, userMessage, botName)
   -- make the current line lower case
-  if (string.find(currentLine, "QUIT")) or (string.find(currentLine, "PART")) then
+  if (string.find(serverPart, "QUIT")) or (string.find(serverPart, "PART")) then
     local name = ""
 
-    for char in currentLine:gmatch "." do
+    for char in (serverPart..userMessage):gmatch "." do
       if (char == "!") then
 	break
       else
@@ -86,17 +86,16 @@ function lastSeenParse(currentLine, botName)
     saveLastSeenData()                                                        -- update the file to reflect they have been seen
     print("Adding "..name.." to last seen map for time "..namesSeen[name]);
 
-  elseif (string.find(currentLine, seenCommand)) then
+  elseif (string.find(userMessage, seenCommand)) then
     -- grab the name the user supplied (we take away 2 from the length of the string because we don't want the \n part (not one char... odd)
-    local name = currentLine:sub(string.find(currentLine, seenCommand)+string.len(seenCommand),string.len(currentLine)-2)
-    local time = namesSeen[name]
+    local name = userMessage:sub(string.find(userMessage, seenCommand)+string.len(seenCommand),string.len(userMessage)-2)
     if namesSeen[name] then
       sendLuaMessage(name.." last seen "..namesSeen[name]);
     else
       sendLuaMessage("I know not of the person you speak of. Quite the mystery indeed.");
     end
-  elseif (string.find(currentLine, "!seenall")) then
-    for key,value in pairs(namesSeen) do sendLuaMessage("("..key..", "..value..")") end
+  elseif (string.find(userMessage, "!seenall")) then
+    for key,value in pairs(namesSeen) do sendLuaPrivateMessage("("..key..", "..value..")") end
   end
 end
 

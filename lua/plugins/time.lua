@@ -1,5 +1,5 @@
-function time(line, botName)
-  if (string.find(line, "kiwi: what is the time?")) then
+function time(username, serverPart, userMessage, botName)
+  if (string.find(userMessage, "kiwi: what is the time?")) then
     sendLuaMessage(os.date())
   end
 end

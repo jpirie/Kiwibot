@@ -24,13 +24,6 @@ using namespace std;
 // define a data size for the input line
 #define DATA_SIZE 256
 
-// define different logged in states that joe can take
-// jpirie: finger has been removed on HW MACS system. I need to edit this.
-#define NOT_LOGGED_IN 1
-#define LOGGED_IN_REMOTE 2
-#define LOGGED_IN_PHYSICALLY 2
-#define JOE_UNKNOWN 3
-
 // a flag to let us know if we are now connected to channel (not receiving more startup messages)
 bool connected;
 
@@ -50,34 +43,24 @@ string ircbotName = "";
 
 int connectionSocket;
 
-/* integer return codes from functions.
- * 0 is standard success message
- * 1 means kiwibot has been asked to be rebooted
- */
-int SUCCESS = 0;
-int REBOOT  = 1;
-int SHUTDOWN  = 2;
+// integer return codes from functions.
+int SUCCESS = 0;   // success flag
+int SHUTDOWN  = 2; // shutdown the kiwi
 
 IrcBot::IrcBot(string nick, string user) {
   this->nick = nick;
   ircbotName = nick;
   this->user  = user;
-  this->reportJoeStatus = false;
-  this->joeStatus = 0;
 
-  // a map from file name to hash of the file
-  map<string, string> luaFileHashes;
+  map<string, string> luaFileHashes; // a map from file name to hash of the file
 
   message = "";
 }
 
 // we close the connection when deconstructing the bot
 IrcBot::~IrcBot() {
-  // close down the lua plugin
-  lua_close(luaState);
-
-  // close the socket
-  close (connectionSocket);
+  lua_close(luaState);      // close down the lua plugin
+  close (connectionSocket); // close the socket
 }
 
 std::string runProcessWithReturn(const char* cmd) {
@@ -199,6 +182,26 @@ int sendLuaMessage(lua_State *luaState) {
   return 0;
 }
 
+// same as sendLuaMessage but for private messages
+int sendLuaPrivateMessage(lua_State *luaState) {
+  string msg = "PRIVMSG ";
+  lua_gettop(luaState);
+
+  // 1 is the first index of the argument array sent back, the username
+  string username = lua_tostring(luaState, 1);
+  msg  += username;
+  msg  += " :";
+  // 2 is the second index of the argument array sent back, the string
+  string message = lua_tostring(luaState, 2);
+  msg  += message;
+
+  // add carridge return and new line to the end of messages
+  msg += "\r\n";
+
+  send(connectionSocket,msg.c_str(),msg.length(),0);
+  return 0;
+}
+
 /* initialises the irc bot. Gives birth to a new kiwi,
    and sets of sockets for communication */
 void IrcBot::init(string channel, string password) {
@@ -214,6 +217,7 @@ void IrcBot::init(string channel, string password) {
   this->luaState = lua_open();
   luaL_openlibs(luaState);
   lua_register(luaState, "sendLuaMessage", sendLuaMessage);
+  lua_register(luaState, "sendLuaPrivateMessage", sendLuaPrivateMessage);
   std::cerr << "-- Loading plugin: " << "lua/loader.lua" << std::endl;
   int status = luaL_loadfile(luaState, "lua/loader.lua");
 
@@ -302,7 +306,7 @@ int IrcBot::mainLoop () {
 
   while (1) {
     int botStatus = checkAndParseMessages();
-    if (botStatus == REBOOT || botStatus == SHUTDOWN)
+    if (botStatus == SHUTDOWN)
       return botStatus;
   }
 }
@@ -445,7 +449,6 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     outputToUser(username, "\"take op status\". Take op status away (must be sadger, simown, or jpirie)");
     outputToUser(username, "\"update repo\". Updates the repository I sit in by pulling from the public http link.");
     outputToUser(username, "\"save data\". Saves data of all kiwi's plugins.");
-    //outputToUser(username, "\"restart\". Shuts me down, rebuilds my binary (make clean && make kiwibot), and then me up again.");
     outputToUser(username, "\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
     outputToUser(username, "\"history <start|stop>\". Starts/stops logging channel conversation.");
     outputToUser(username, "\"plugin list\". Lists the current plugins and their activation status.");
@@ -516,14 +519,6 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
 
   }
-  else if (stringSearch(userMessage, "kiwi: restart")) {
-    // outputToChannel("Kiwi's restarting! Maybe gonna get some tasty updates! Ooh!");
-    // sendMessage("QUIT");
-    // close (connectionSocket);  //close the open socket
-    // cout << "Restarting...";
-    // return REBOOT;
-
-  }
   else if (stringSearch(userMessage, "kiwi: shutdown")) {
     outputToChannel("Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
     sendMessage("QUIT");
@@ -550,14 +545,6 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     else
        outputToChannel("My ears are already shut to your sneakiness. I'll keep it secret. I'll keep it safe.");
   }
-  else if (stringSearch(userMessage, "kiwi: report joe status start")) {
-    outputToChannel("I'm all over this, don't you fear.");
-    reportJoeStatus = true;
-  }
-  else if (stringSearch(userMessage, "kiwi: report joe status stop")) {
-    outputToChannel("Alright then, consider my eyes un-peeled.");
-    reportJoeStatus = false;
-  }
   else if (stringSearch(userMessage, "kiwi: check authentication")) {
     outputToChannel("I'll get on the dog and bone to NickServ straight away.");
     string checkAccess = "PRIVMSG NickServ : ACC " + username;
@@ -571,37 +558,6 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     string newAuthenticatedMember = str.substr(separatingColon+2, str.length()-str.find("ACC")-1);
     authenticatedUsernames.push_back(newAuthenticatedMember);
     cout << "New authenticated username: '" << newAuthenticatedMember << "'" << endl;
-  }
-
-  if (reportJoeStatus) {
-    string fingerJoe = "finger jbw";
-    string fingerJoeOutput = runProcessWithReturn(fingerJoe.c_str());
-    if (fingerJoeOutput.find("is not presently logged in") != string::npos) {
-      if (joeStatus != NOT_LOGGED_IN ) {
-	joeStatus = NOT_LOGGED_IN;
-	outputToChannel("Joe is not currently logged in. Maybe he's travelling in, wouldn't that be fun? ;)");
-      }
-    }
-    // joe uses a virgin connection, cpc will be part of the name of 'where' information
-    else if (fingerJoeOutput.find("cpc") != string::npos) {
-      if (joeStatus != LOGGED_IN_REMOTE) {
-	joeStatus = LOGGED_IN_REMOTE;
-	outputToChannel("Joe is logged in to lxultra1 from a remote location. You're safe- rejoyce!");
-      }
-    }
-    // he's logged in, but it's not remotely. He must be logged in physically
-    else if (fingerJoeOutput.find("lxultra1") != string::npos) {
-      if (joeStatus != LOGGED_IN_PHYSICALLY) {
-	joeStatus = LOGGED_IN_PHYSICALLY;
-	outputToChannel("Joe is logged in to lxultra1. Maybe he's travelling in, wouldn't that be fun? ;)");
-      }
-    }
-    else {
-      if (joeStatus != JOE_UNKNOWN) {
-	joeStatus = JOE_UNKNOWN;
-	outputToChannel("No conditions matched! Joe is in an unknown state! PANNNIIICCC!");
-      }
-    }
   }
 
   /* it is important to check that we are passed all the initial server messages!
@@ -664,13 +620,12 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     // get ready to call the "main" function
     lua_getglobal(luaState, "main");
 
-    // parameter one: the current string from the server
-    lua_pushstring(luaState, str.c_str());
+    lua_pushstring(luaState, username.c_str());   // parameter one: the user's name who may be talking
+    lua_pushstring(luaState, serverInfo.c_str()); // parameter two: the server part of the message
+    lua_pushstring(luaState, userMessage.c_str()); // parameter three: the user message
+    lua_pushstring(luaState, this->nick.c_str()); // parameter four: the current bot's name
 
-    // parameter two: the current bot's name
-    lua_pushstring(luaState, this->nick.c_str());
-
-    // parameter two: a new table for storing the updated files list
+    // parameter five: give new table for storing the updated files list
     lua_createtable(luaState, updatedFiles.size(), 0);
     int newTable = lua_gettop(luaState);
     int index = 1;
@@ -681,7 +636,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
       index++;
     }
 
-    // parameter three: a new table for storing the plugins that have been deleted
+    // parameter six: a new table for storing the plugins that have been deleted
     lua_createtable(luaState, deletedFiles.size(), 0);
     int deletedFilesTable = lua_gettop(luaState);
     index = 1;
@@ -702,7 +657,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
 
     // call the global function that's been assigned (4 denotes the number of parameters)
-    int errors = lua_pcall(luaState, 4, 0, 0);
+    int errors = lua_pcall(luaState, 6, 0, 0);
 
     if (firstPluginLoad) {
       loadData();

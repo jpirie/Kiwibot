@@ -1,6 +1,6 @@
-function managePlugins(request, botName)
+function managePlugins(username, serverPart, userMessage, botName)
 
-  local function listPlugins(request)
+  local function listPlugins(userMessage)
     local plugin_list = ""
     local first_plugin = false
     for i,plugin in ipairs(plugins) do
@@ -17,11 +17,11 @@ function managePlugins(request, botName)
     sendLuaMessage("Plugins loaded: " .. plugin_list)
   end
 
-  local function unloadPlugins(request)
+  local function unloadPlugins(userMessage)
 
-    local _,x = string.find(request, "plugin remove")
+    local _,x = string.find(userMessage, "plugin remove")
     --Substring takes into account inclusive matching & space between words
-    local pluginName = string.sub(request,x+2)
+    local pluginName = string.sub(userMessage,x+2)
     --Trim whitespace
     pluginName = pluginName:gsub("^%s*(.-)%s*$", "%1")
 
@@ -29,7 +29,7 @@ function managePlugins(request, botName)
     for i,plugin in ipairs(plugins) do
       if(plugin.name == pluginName) then
         pluginFound = true
-      end      
+      end
     end
 
     if pluginFound then
@@ -39,10 +39,10 @@ function managePlugins(request, botName)
     end
   end
 
-  if (string.find(request, "plugin list")) then
-    listPlugins(request)
-  elseif (string.find(request, "plugin remove")) then
-    unloadPlugins(request)
+  if (string.find(userMessage, "plugin list")) then
+    listPlugins(userMessage)
+  elseif (string.find(userMessage, "plugin remove")) then
+    unloadPlugins(userMessage)
   end
 end
 
@@ -57,5 +57,5 @@ function loadData ()
 end
 
 
-return {name="Plugin Manager", description="For managing plugins within IRC", 
+return {name="Plugin Manager", description="For managing plugins within IRC",
         parseFunction=managePlugins, saveDataFunction=saveData, loadDataFunction=loadData}
