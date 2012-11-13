@@ -7,9 +7,9 @@ local hungrySynonymsLow = {"Getting a bit peckish I have to say", "I would sure 
 local hungrySynonymsModerate = {"Certainly hurgry now, any chance of some food?", "I would really love some tastiness about now", "Oops, that was my stomach rumbling!", "Is dinner for your favourite kiwi on the horizon?"}
 local hungrySynonymsHigh = {"AaAaH! Please feeeeed meeeee", "Help... help me. I'm.... so hungry...", "Please, any food? The... hunger...", "CREEEEEEEEEE! Ima really pretty hurgry."}
 
-local HUNGER_MAX = 600
+local HUNGER_MAX = 1000
 local hunger = HUNGER_MAX
-local whineLevel = 300
+local whineLevel = 400
 local linesEncountered = 0
 
 -- we should really be looking for regexps or something, not
@@ -30,8 +30,8 @@ function animalParse(username, serverPart, userMessage, botName)
   if (string.find(userMessage, "feeds kiwi")) then
     -- we should add points to the user that feeds kiwi so that it loves that user more
     sendLuaMessage(thanksSynonyms[math.random(#thanksSynonyms)])
-    if hunger < 500 then
-      hunger = hunger + 100;
+    if hunger < 700 then
+      hunger = hunger + 300;
     else
       hunger = HUNGER_MAX
     end
@@ -60,7 +60,7 @@ function animalParse(username, serverPart, userMessage, botName)
       sendLuaMessage(hungrySynonymsHigh[math.random(#hungrySynonymsLow)])
     elseif hunger <=  150 then
       sendLuaMessage(hungrySynonymsModerate[math.random(#hungrySynonymsLow)])
-    elseif hunger <= 300 then
+    elseif hunger <= 400 then
       sendLuaMessage(hungrySynonymsLow[math.random(#hungrySynonymsLow)])
     end
     whineLevel = math.floor(whineLevel / 2)
