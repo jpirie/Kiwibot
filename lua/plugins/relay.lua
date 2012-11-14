@@ -46,7 +46,7 @@ function relayParse(username, serverPart, userMessage, botName)
     end
   end
   for key,value in pairs(namesToRelay) do
-    if (username ~= value)
+    if (username ~= value) then
     sendLuaPrivateMessage(value, username..": "..userMessage)
   end
 end
