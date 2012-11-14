@@ -1,20 +1,21 @@
 -- acknowledge.lua
--- kiwi acknowledges user messages by sending them back to the user in a private message
+-- bot acknowledges user messages by sending them back to the user in a private message
 
 namesToAcknowledge = {}
 namesToRelay = {}
 
-function relayParse(username, serverPart, userMessage, botName)
+function relayParse(username, serverPart, userMessage)
   -- make the current line lower case
+  botname = getBotName()
   userMessage = userMessage:lower()
 
-  if (string.find(userMessage, "kiwi: acknowledge")) then
+  if (string.find(userMessage, botname..": acknowledge")) then
     table.insert(namesToAcknowledge, username)
     sendLuaMessage("I will acknowledge your messages.")
-  elseif (string.find(userMessage, "kiwi: relay")) then
+  elseif (string.find(userMessage, botname..": relay")) then
     table.insert(namesToRelay, username)
     sendLuaMessage("I will relay messages privately to you.")
-  elseif (string.find(userMessage, "kiwi: stop acknowledge")) then
+  elseif (string.find(userMessage, botname..": stop acknowledge")) then
     local findUser = false
     for key,value in pairs(namesToAcknowledge) do
       if (value == username) then
@@ -26,7 +27,7 @@ function relayParse(username, serverPart, userMessage, botName)
     if (findUser == false) then
       sendLuaMessage("I wasn't acknowledging your messages!")
     end
-  elseif (string.find(userMessage, "kiwi: stop relay")) then
+  elseif (string.find(userMessage, botname..": stop relay")) then
     local findUser = false
     for key,value in pairs(namesToRelay) do
       if (value == username) then
@@ -48,6 +49,7 @@ function relayParse(username, serverPart, userMessage, botName)
   for key,value in pairs(namesToRelay) do
     if (username ~= value) then
     sendLuaPrivateMessage(value, username..": "..userMessage)
+    end
   end
 end
 

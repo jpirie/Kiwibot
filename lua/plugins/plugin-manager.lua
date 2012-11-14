@@ -1,4 +1,4 @@
-function managePlugins(username, serverPart, userMessage, botName)
+function managePlugins(username, serverPart, userMessage)
   local function listPlugins(userMessage)
     local plugin_list = ""
     local first_plugin = false

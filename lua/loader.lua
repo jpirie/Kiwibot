@@ -11,9 +11,9 @@ plugins = {}
 loadedPlugins = {}
 
 
-function main(username, serverPart, userMessage, botName, updatedFiles, deletedFiles)
+function main(username, serverPart, userMessage, updatedFiles, deletedFiles)
   loadUpdatedFiles(updatedFiles)
-  parseWithPlugins(username, serverPart, userMessage, botName)
+  parseWithPlugins(username, serverPart, userMessage)
 end
 
 function savePluginData()
@@ -44,9 +44,9 @@ function loadUpdatedFiles(updatedFiles)
   end
 end
 
-function parseWithPlugins(username, serverPart, userMessage, botName)
+function parseWithPlugins(username, serverPart, userMessage)
   for _,plugin in ipairs(loadedPlugins) do
     local parser = plugin.parseFunction
-    parser(username, serverPart, userMessage, botName)
+    parser(username, serverPart, userMessage)
   end
 end

@@ -14,11 +14,12 @@ local linesEncountered = 0
 
 -- we should really be looking for regexps or something, not
 -- straight strings.
-function animalParse(username, serverPart, userMessage, botName)
+function animalParse(username, serverPart, userMessage)
   -- make the current line lower case
   userMessage = userMessage:lower()
+  botname = getBotName()
 
-  if (string.find(userMessage, "kiwi")) then
+  if (string.find(userMessage, botname)) then
     if (string.find(userMessage, "cup of tea")) then
       sendLuaMessage("but of course! CREE-CREE!")
     elseif (string.find(userMessage, "pets")) then
@@ -27,7 +28,7 @@ function animalParse(username, serverPart, userMessage, botName)
       sendLuaMessage("Oops I am a bit daft sometimes aren't I. CREE!")
     end
   end
-  if (string.find(userMessage, "feeds kiwi")) then
+  if (string.find(userMessage, "feeds "..botname)) then
     -- we should add points to the user that feeds kiwi so that it loves that user more
     sendLuaMessage(thanksSynonyms[math.random(#thanksSynonyms)])
     if hunger < 700 then
@@ -36,19 +37,17 @@ function animalParse(username, serverPart, userMessage, botName)
       hunger = HUNGER_MAX
     end
     whineLevel = math.floor(hunger / 2)
-  elseif (string.find(userMessage, "kiwi: what is your name")) then
-    sendLuaMessage(botName)
   else
     -- check for hello messages
     for _,greeting in pairs(helloSynonyms) do
-      if (string.find(userMessage, greeting.." kiwi")) then
+      if (string.find(userMessage, greeting.." "..botname)) then
 	sendLuaMessage("hi, CREE!")
       end
     end
 
     -- check for goodbye messages
     for _,farewells in pairs(byeSynonyms) do
-      if (string.find(userMessage, farewells.." kiwi")) then
+      if (string.find(userMessage, farewells.." "..botname)) then
 	sendLuaMessage("Laters, I'll keep this channel in check for you, have no fear!")
       end
     end

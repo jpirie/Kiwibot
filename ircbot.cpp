@@ -89,7 +89,7 @@ bool stringSearch(string toSearch, string searchFor) {
  * if there is, open it in append mode and add the new string received */
 void writeHistory(string username, string serverInfo, string userMessage) {
 
-   if (!loggingHistory || !connected || stringSearch(userMessage, "kiwi: history start") || stringSearch(userMessage, "kiwi: history stop"))
+   if (!loggingHistory || !connected || stringSearch(userMessage, ircbotName+": history start") || stringSearch(userMessage, ircbotName+": history stop"))
      return;
 
    // the line that will be output to the history log
@@ -161,6 +161,12 @@ void writeHistory(string username, string serverInfo, string userMessage) {
    }
 }
 
+// returns the name of the kiwibot, called by lua
+int getBotName(lua_State *luaState) {
+  lua_pushstring(luaState, ircbotName.c_str());
+  return 1;
+}
+
 /* same as sendMessage but called by the Lua code
  * we need a new function because C++ functions must have a specific signature
  * if lua functions are to call them */
@@ -217,6 +223,7 @@ void IrcBot::init(string channel, string password) {
   this->luaState = lua_open();
   luaL_openlibs(luaState);
   lua_register(luaState, "sendLuaMessage", sendLuaMessage);
+  lua_register(luaState, "getBotName", getBotName);
   lua_register(luaState, "sendLuaPrivateMessage", sendLuaPrivateMessage);
   std::cerr << "-- Loading plugin: " << "lua/loader.lua" << std::endl;
   int status = luaL_loadfile(luaState, "lua/loader.lua");
@@ -440,37 +447,37 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
       authenticatedUsernames.erase(position);
   }
 
-  if (stringSearch(userMessage, "kiwi: help")) {
-    outputToUser(username, "I have all kinds of fun features! Syntax: \"kiwi: <command>\" on the following commands:");
+  if (stringSearch(userMessage, ircbotName+": help")) {
+    outputToUser(username, "I have all kinds of fun features! Syntax: \""+ircbotName+": <command>\" on the following commands:");
     outputToUser(username, "\"check authentication\". Checks user access information via NickServ.");
     outputToUser(username, "\"give history\". Creates tarball of history and puts link on web. (Must be simown, sadger, or jpirie)");
     outputToUser(username, "\"hide history\". Removes existing tarball of history on web (Must be simown, sadger, or jpirie)");
     outputToUser(username, "\"give op status\". Gives op status (must be sadger, simown, or jpirie)");
     outputToUser(username, "\"take op status\". Take op status away (must be sadger, simown, or jpirie)");
     outputToUser(username, "\"update repo\". Updates the repository I sit in by pulling from the public http link.");
-    outputToUser(username, "\"save data\". Saves data of all kiwi's plugins.");
+    outputToUser(username, "\"save data\". Saves data of all "+ircbotName+" plugins.");
     outputToUser(username, "\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
     outputToUser(username, "\"history <start|stop>\". Starts/stops logging channel conversation.");
     outputToUser(username, "\"plugin list\". Lists the current plugins and their activation status.");
   }
-  else if (stringSearch(userMessage, "kiwi: update repo")) {
+  else if (stringSearch(userMessage, ircbotName+": update repo")) {
     cout << "Updating repository..." << endl;
     outputToChannel("Update the repo? Sure thing!");
     system("cd ~/repos/kiwibot; git pull http master; git pull http dynamic-plugins");
     cout << "done updating repository." << endl;
     outputToChannel("All done boss! <3");
   }
-  else if (stringSearch(userMessage, "kiwi: save data")) {
-    cout << "Saving all kiwi data..." << endl;
+  else if (stringSearch(userMessage, ircbotName+": save data")) {
+    cout << "Saving all "+ircbotName+" data..." << endl;
     saveData();
-    cout << "Saving all kiwi data..." << endl;
+    cout << "Saving all "+ircbotName+" data..." << endl;
   }
-  else if (stringSearch(userMessage, "kiwi: load data")) {
-    cout << "Loading all kiwi data..." << endl;
+  else if (stringSearch(userMessage, ircbotName+": load data")) {
+    cout << "Loading all "+ircbotName+" data..." << endl;
     loadData();
     cout << "done!..." << endl;
   }
-  else if (stringSearch(userMessage, "kiwi: give history")) {
+  else if (stringSearch(userMessage, ircbotName+": give history")) {
     if (username == "sadger" || username == "jpirie" || username == "simown") {
       if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
 	string historyCommand = "tar -czf kiwi-history.tar.gz history/; mv kiwi-history.tar.gz ~/public_html/";
@@ -483,7 +490,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     else
       outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
   }
-  else if (stringSearch(userMessage, "kiwi: hide history")) {
+  else if (stringSearch(userMessage, ircbotName+": hide history")) {
     if (username == "sadger" || username == "jpirie" || username == "simown") {
       if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
 	string historyCommand = "rm ~/public_html/kiwi-history.tar.gz";
@@ -497,7 +504,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
       outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
 
   }
-  else if (stringSearch(userMessage, "kiwi: give op status")) {
+  else if (stringSearch(userMessage, ircbotName+": give op status")) {
     if (username == "sadger" || username == "jpirie" || username == "simown") {
       if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end())
 	sendMessage("MODE "+channelName+" +o "+username);
@@ -507,7 +514,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     else
       outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
   }
-  else if (stringSearch(userMessage, "kiwi: take op status")) {
+  else if (stringSearch(userMessage, ircbotName+": take op status")) {
     if (username == "sadger" || username == "jpirie" || username == "simown") {
       if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end())
 	sendMessage("MODE "+channelName+" -o "+username);
@@ -519,14 +526,14 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
 
   }
-  else if (stringSearch(userMessage, "kiwi: shutdown")) {
+  else if (stringSearch(userMessage, ircbotName+": shutdown")) {
     outputToChannel("Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
     sendMessage("QUIT");
     close (connectionSocket);  //close the open socket
     cout << "Shutting down...";
     return SHUTDOWN;
   }
-  else if (stringSearch(userMessage, "kiwi: history start")) {
+  else if (stringSearch(userMessage, ircbotName+": history start")) {
     if (loggingHistory) {
        loggingHistory = false;
        outputToChannel("I'm already keeping my ears peeled for tasty parsable information!");
@@ -537,7 +544,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
        loggingHistory = true;
     }
   }
-  else if (stringSearch(userMessage, "kiwi: history stop")) {
+  else if (stringSearch(userMessage, ircbotName+": history stop")) {
     if (loggingHistory) {
        loggingHistory = false;
        outputToChannel("Ah I see, cunning secret conversations. I know not of what you speak, your sneakrets are safe with me.");
@@ -545,7 +552,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     else
        outputToChannel("My ears are already shut to your sneakiness. I'll keep it secret. I'll keep it safe.");
   }
-  else if (stringSearch(userMessage, "kiwi: check authentication")) {
+  else if (stringSearch(userMessage, ircbotName+": check authentication")) {
     outputToChannel("I'll get on the dog and bone to NickServ straight away.");
     string checkAccess = "PRIVMSG NickServ : ACC " + username;
     sendMessage(checkAccess);
@@ -623,7 +630,6 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     lua_pushstring(luaState, username.c_str());   // parameter one: the user's name who may be talking
     lua_pushstring(luaState, serverInfo.c_str()); // parameter two: the server part of the message
     lua_pushstring(luaState, userMessage.c_str()); // parameter three: the user message
-    lua_pushstring(luaState, this->nick.c_str()); // parameter four: the current bot's name
 
     // parameter five: give new table for storing the updated files list
     lua_createtable(luaState, updatedFiles.size(), 0);
@@ -636,7 +642,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
       index++;
     }
 
-    // parameter six: a new table for storing the plugins that have been deleted
+    // parameter five: a new table for storing the plugins that have been deleted
     lua_createtable(luaState, deletedFiles.size(), 0);
     int deletedFilesTable = lua_gettop(luaState);
     index = 1;
@@ -656,8 +662,8 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     }
 
 
-    // call the global function that's been assigned (4 denotes the number of parameters)
-    int errors = lua_pcall(luaState, 6, 0, 0);
+    // call the global function that's been assigned (5 denotes the number of parameters)
+    int errors = lua_pcall(luaState, 5, 0, 0);
 
     if (firstPluginLoad) {
       loadData();

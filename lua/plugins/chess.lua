@@ -60,8 +60,9 @@ function pawnMove(move)
   end
 end
 
-function chessParse(username, serverPart, userMessage, botName)
-  if (string.find(userMessage, "kiwi: new chess game")) then
+function chessParse(username, serverPart, userMessage)
+  botname = getBotName()
+  if (string.find(userMessage, botname..": new chess game")) then
     if (gameInProgress) then
       sendLuaMessage("A game is already in progress. To restart the game, use the command \"restart chess game\" (not yet implemented!)")
     else
@@ -69,9 +70,9 @@ function chessParse(username, serverPart, userMessage, botName)
       currentBoard = createFreshBoard()
       sendLuaMessage("Got all the pieces off the floor, ready to go. White to move.")
     end
-  elseif (string.find(userMessage, "kiwi: move ")) then
+  elseif (string.find(userMessage, botname..": move ")) then
     -- we should clean this up so we don't have to do it twice
-    local moveText = "kiwi: move"
+    local moveText = botname..": move"
     local startOfUserText = string.find(serverPart..userMessage, moveText)
 
     -- strip out irrelevant text and trim whitespace

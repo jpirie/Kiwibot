@@ -67,7 +67,7 @@ function saveLastSeenData ()
   print ("done!")
 end
 
-function lastSeenParse(username, serverPart, userMessage, botName)
+function lastSeenParse(username, serverPart, userMessage)
   -- make the current line lower case
   if (string.find(serverPart, "QUIT")) or (string.find(serverPart, "PART")) then
     local name = ""
