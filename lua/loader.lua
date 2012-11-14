@@ -5,9 +5,10 @@
 -- restart kiwibot
 --
 
+
+--These tables are global (including to all plugins)
 plugins = {}
 loadedPlugins = {}
-
 
 
 function main(username, serverPart, userMessage, botName, updatedFiles, deletedFiles)
@@ -16,14 +17,14 @@ function main(username, serverPart, userMessage, botName, updatedFiles, deletedF
 end
 
 function savePluginData()
-  for _,plugin in ipairs(plugins) do
+  for _,plugin in ipairs(loadedPlugins) do
     local saveFunction = plugin.saveDataFunction
     saveFunction()
   end
 end
 
 function loadPluginData()
-  for _,plugin in ipairs(plugins) do
+  for _,plugin in ipairs(loadedPlugins) do
     local loadFunction = plugin.loadDataFunction
     loadFunction()
   end
@@ -38,12 +39,13 @@ function loadUpdatedFiles(updatedFiles)
          table.remove(plugins,i)
        end
      end
-    table.insert(plugins,plugin)
+    table.insert(plugins, plugin)
+    table.insert(loadedPlugins,plugin)
   end
 end
 
 function parseWithPlugins(username, serverPart, userMessage, botName)
-  for _,plugin in ipairs(plugins) do
+  for _,plugin in ipairs(loadedPlugins) do
     local parser = plugin.parseFunction
     parser(username, serverPart, userMessage, botName)
   end
