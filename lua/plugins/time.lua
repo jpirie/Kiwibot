@@ -1,5 +1,6 @@
 function time(username, serverPart, userMessage)
-  local botname = getBotName()
+  local botname = getBotName():lower()
+  userMessage = userMessage:lower()
   if (string.find(userMessage, botname..": what is the time?")) then
     sendLuaMessage(os.date())
   end

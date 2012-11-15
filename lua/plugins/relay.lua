@@ -6,7 +6,7 @@ namesToRelay = {}
 
 function relayParse(username, serverPart, userMessage)
   -- make the current line lower case
-  botname = getBotName()
+  botname = getBotName():lower()
   userMessage = userMessage:lower()
 
   if (string.find(userMessage, botname..": acknowledge")) then

@@ -17,7 +17,7 @@ local linesEncountered = 0
 function animalParse(username, serverPart, userMessage)
   -- make the current line lower case
   userMessage = userMessage:lower()
-  botname = getBotName()
+  botname = getBotName():lower()
 
   if (string.find(userMessage, botname)) then
     if (string.find(userMessage, "cup of tea")) then

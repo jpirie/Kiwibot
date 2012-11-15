@@ -61,7 +61,7 @@ function pawnMove(move)
 end
 
 function chessParse(username, serverPart, userMessage)
-  botname = getBotName()
+  botname = getBotName():lower()
   if (string.find(userMessage, botname..": new chess game")) then
     if (gameInProgress) then
       sendLuaMessage("A game is already in progress. To restart the game, use the command \"restart chess game\" (not yet implemented!)")
