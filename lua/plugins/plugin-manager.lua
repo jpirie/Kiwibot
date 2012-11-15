@@ -80,16 +80,5 @@ function managePlugins(username, serverPart, userMessage)
   end
 end
 
-function saveData()
-  print ("Saving plugin-manager.lua data...")
-  print ("done!")
-end
-
-function loadData ()
-  print ("Loading plugin-manager.lua data...")
-  print ("done!")
-end
-
-
 return {name="Plugin Manager", description="For managing plugins within IRC",
 parseFunction=managePlugins, saveDataFunction=saveData, loadDataFunction=loadData}

@@ -19,14 +19,18 @@ end
 function savePluginData()
   for _,plugin in ipairs(loadedPlugins) do
     local saveFunction = plugin.saveDataFunction
-    saveFunction()
+    if (saveFunction) then
+      saveFunction()
+    end
   end
 end
 
 function loadPluginData()
   for _,plugin in ipairs(loadedPlugins) do
     local loadFunction = plugin.loadDataFunction
-    loadFunction()
+    if (loadFunction) then
+      loadFunction()
+    end
   end
 end
 

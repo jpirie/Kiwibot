@@ -66,15 +66,6 @@ function animalParse(username, serverPart, userMessage)
   end
 end
 
-function saveData ()
-  print ("Saving animal.lua data...")
-end
-
-function loadData ()
-  print ("Loading animal.lua data...")
-  print ("done!")
-end
-
 return {name="Animal Parser", description="Parses greetings for the kiwi",
 	parseFunction=animalParse, saveDataFunction=saveData, loadDataFunction=loadData}
 

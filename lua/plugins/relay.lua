@@ -53,15 +53,5 @@ function relayParse(username, serverPart, userMessage)
   end
 end
 
-function saveRelayData()
-  print ("Saving relay.lua data...")
-  print ("done!")
-end
-
-function loadRelayData ()
-  print ("Loading relay.lua data...")
-  print ("done!")
-end
-
  return {name="Relay", description="relays user messages by sending them back to the user in a private message",
 	parseFunction=relayParse, saveDataFunction=saveRelayData, loadDataFunction=loadRelayData}
