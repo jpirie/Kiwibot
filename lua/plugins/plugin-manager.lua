@@ -68,6 +68,37 @@ function managePlugins(username, serverPart, userMessage)
         sendLuaMessage("No such plugin " .. pluginName)
       end
     end
+  end
+
+  local function pluginHelp (userMessage)
+    local _,x = string.find(userMessage, "plugin help")
+    --Substring takes into account inclusive matching & space between words
+    local pluginName = string.sub(userMessage,x+2)
+    --Trim whitespace
+    pluginName = pluginName:gsub("^%s*(.-)%s*$", "%1")
+
+    local pluginFound = false
+    local foundPlugin = nil
+    for i,plugin in ipairs(plugins) do
+      if(plugin.name == pluginName) then
+        pluginFound = true
+        foundPlugin = plugin
+      end
+    end
+
+    if pluginFound then
+      local documentation = foundPlugin.doc
+      if documentation then
+       sendLuaPrivateMessage(username, "Documentation for " .. pluginName) 
+       for command,usage in pairs(documentation) do
+          sendLuaPrivateMessage(username, tostring(command) .. "\t" .. tostring(usage))
+       end
+      else  
+       sendLuaPrivateMessage(username, "No documentation found for " .. pluginName) 
+      end
+    else
+      sendLuaMessage("No such plugin " .. pluginName)
+    end
 
   end
 
@@ -77,6 +108,8 @@ function managePlugins(username, serverPart, userMessage)
     loadPlugins(userMessage)
   elseif (string.find(userMessage, "plugin unload")) then
     unloadPlugins(userMessage)
+  elseif (string.find(userMessage, "plugin help")) then
+    pluginHelp(userMessage)
   end
 end
 

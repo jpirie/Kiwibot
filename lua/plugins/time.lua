@@ -6,5 +6,7 @@ function time(username, serverPart, userMessage)
   end
 end
 
+local documentation = {['Usage'] = "\"<botname> : what is the time?\" Prints the current server time and date"}
+
 return {name="Time", description="Returns the current date and time",
-	parseFunction=time, saveDataFunction=saveTimeData, loadDataFunction=loadTimeData}
+	parseFunction=time, doc=documentation}
