@@ -7,7 +7,7 @@ local hungrySynonymsLow = {"Getting a bit peckish I have to say", "I would sure 
 local hungrySynonymsModerate = {"Certainly hurgry now, any chance of some food?", "I would really love some tastiness about now", "Oops, that was my stomach rumbling!", "Is dinner for your favourite kiwi on the horizon?"}
 local hungrySynonymsHigh = {"AaAaH! Please feeeeed meeeee", "Help... help me. I'm.... so hungry...", "Please, any food? The... hunger...", "CREEEEEEEEEE! Ima really pretty hurgry."}
 
-local HUNGER_MAX = 1000
+local HUNGER_MAX = 1500
 local hunger = HUNGER_MAX
 local whineLevel = 400
 local linesEncountered = 0
@@ -31,8 +31,8 @@ function animalParse(username, serverPart, userMessage)
   if (string.find(userMessage, "feeds "..botname)) then
     -- we should add points to the user that feeds kiwi so that it loves that user more
     sendLuaMessage(thanksSynonyms[math.random(#thanksSynonyms)])
-    if hunger < 700 then
-      hunger = hunger + 300;
+    if hunger < 500 then
+      hunger = hunger + 500;
     else
       hunger = HUNGER_MAX
     end
