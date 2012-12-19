@@ -43,6 +43,11 @@ function loadUpdatedFiles(updatedFiles)
          table.remove(plugins,i)
        end
      end
+     for i,currentPlugin in ipairs(loadedPlugins) do
+       if plugin.name == currentPlugin.name then
+         table.remove(loadedPlugins,i)
+       end
+     end
     table.insert(plugins, plugin)
     table.insert(loadedPlugins,plugin)
   end
