@@ -5,10 +5,12 @@
 #include <algorithm>
 #include <netdb.h>
 #include <stdlib.h>
+#include <stdexcept>
 #include <map>
 #include <vector>
 #include <ctime>
 #include <iomanip>
+#include <dirent.h>
 
 #include "ircbot.h"
 
@@ -46,6 +48,18 @@ int connectionSocket;
 // integer return codes from functions.
 int SUCCESS = 0;   // success flag
 int SHUTDOWN  = 2; // shutdown the kiwi
+
+
+// maximum lines to send to the user at any one time
+int MAX_LINES_OUTPUT = 5;
+
+// holds information for private messaging to users (e.g. history searching)
+struct userTextManagement {
+  int textPosition;
+  vector<string> text;
+};
+
+map<string, userTextManagement> directUserText; // a map from file name to hash of the file
 
 IrcBot::IrcBot(string nick, string user) {
   this->nick = nick;
@@ -349,7 +363,34 @@ int IrcBot::outputToChannel(string msg) {
 
 // outputs a message to the irc channel
 int IrcBot::outputToUser(string username, string msg) {
-  sendMessage("PRIVMSG "+username+" :"+msg);
+  cout << "Message going to user: " << msg << endl;
+
+  /* put the lines to send in a vector, we might need it if we want to send
+   * the user a lot of information */
+  vector<string> linesToSend;
+  istringstream ss( msg );
+  while (!ss.eof()) {
+      string x;
+      getline( ss, x, '\n' );
+      linesToSend.push_back(x);
+    }
+
+  if (linesToSend.size() <= MAX_LINES_OUTPUT)
+    // let's not bother with any fanciness, they only want a few lines. Send them everything.
+    sendMessage("PRIVMSG "+username+" :"+msg);
+  else {
+    /* we have to consider flooding in this case so we have to do something more sophisticated
+     * add the lines we need to send to the user in the right hand side of a map, with the key
+     * being their username */
+    cout << "Too many lines to send, adding to map." << endl;
+    userTextManagement currentUser;
+    currentUser.textPosition = MAX_LINES_OUTPUT;
+    currentUser.text = linesToSend;
+    directUserText[username] = currentUser;
+    for (unsigned i=0; i<MAX_LINES_OUTPUT; i++)
+      sendMessage("PRIVMSG "+username+" :"+linesToSend.at(i));
+    sendMessage("PRIVMSG "+username+" :[ Commands: 'next' (see next page); 'prev' (see previous page) ]");
+  }
 }
 
 // sends the pong packet so the IRC server knows that we're alive
@@ -415,8 +456,87 @@ std::string getUserMessage(string fullMessage) {
    size_t findEndOfServerInfo = fullMessage.find(channelName);
    if (findEndOfServerInfo != string::npos)
       return fullMessage.substr(int(findEndOfServerInfo)+channelName.size()+2);
-   else
-      return "";
+   else {
+     // probably a private message, hence there is no channel name
+     findEndOfServerInfo = fullMessage.find(ircbotName);
+     if (findEndOfServerInfo != string::npos)
+       return fullMessage.substr(int(findEndOfServerInfo)+ircbotName.size()+2);
+     else
+       return "";
+   }
+}
+
+// a private message sent to the bot directly
+void IrcBot::parsePrivateMessage(string str, Kiwi kiwi) {
+  string username = getUsername(str);
+  string serverInfo = getServerInfo(str);
+  string userMessage = getUserMessage(str);
+
+  cout << "username: " << username << endl;
+  cout << "serverInfo: " << serverInfo << endl;
+  cout << "userMesage: " << userMessage << endl;
+
+  /* next/prev system the user can say 'next' and 'prev' to get more
+   * output from the bot where there is a lot of information that they
+   * want to know */
+  if (userMessage.find("next") != string::npos) {
+    userTextManagement userText = directUserText[username];
+    // when a user asks for 'next' without information stored for the user
+    if (userText.text.empty()) {
+      sendMessage("PRIVMSG "+username+" :I don't know what you want 'next' of. Perhaps my memory isn't what it used to be...");
+      return;
+    }
+    int startPoint = userText.textPosition;
+    int endPoint = userText.textPosition+MAX_LINES_OUTPUT;
+    cout << "Text position: " << userText.textPosition << endl;
+    for (unsigned i=startPoint; i<endPoint; i++) {
+      try {
+	sendMessage("PRIVMSG "+username+" :"+userText.text.at(i));
+	userText.textPosition = i + 1;
+      }
+      catch (out_of_range& outOfRange) {
+	sendMessage("PRIVMSG "+username+" :[ End of text. Commands: 'prev' (see previous page) ]");
+	break;
+      }
+    }
+
+    // update the map so we know where the text position is for the user
+    directUserText[username] = userText;
+  }
+  else if (userMessage.find("prev") != string::npos) {
+    userTextManagement userText = directUserText[username];
+    if (userText.text.empty()) {
+      // we don't have any text stored for that user
+      sendMessage("PRIVMSG "+username+" :I don't know what you want 'prev' of. Perhaps my memory isn't what it used to be...");
+      return;
+    }
+    else if ((userText.textPosition < MAX_LINES_OUTPUT) || (userText.textPosition - MAX_LINES_OUTPUT - 1 < 0)) {
+      // they are still on the first page
+      sendMessage("PRIVMSG "+username+" :There is no previous text I'm afraid.");
+      return;
+    }
+    else  {
+      // we are at the end of the text, so calculate our starting point
+      if (userText.textPosition >= userText.text.size())
+	userText.textPosition = userText.text.size() - (userText.text.size() % MAX_LINES_OUTPUT) - MAX_LINES_OUTPUT;
+      else
+	userText.textPosition = userText.textPosition - MAX_LINES_OUTPUT*2;
+
+      cout << "userText.textPosition = " << userText.textPosition << endl;
+      cout << "userText.text.size() = " << userText.text.size() << endl;
+
+      int startPoint = userText.textPosition;
+      int endingPoint = userText.textPosition+MAX_LINES_OUTPUT;
+      // display the text to the user
+      for (unsigned i=startPoint; i<endingPoint; i++) {
+	sendMessage("PRIVMSG "+username+" :"+userText.text.at(i));
+      }
+      userText.textPosition = userText.textPosition + MAX_LINES_OUTPUT;
+      // update map so we keep track of where the user is in the text
+      directUserText[username] = userText;
+    }
+  }
+
 }
 
 /* the function which parses the messages that the user sends
@@ -427,6 +547,14 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   string username = getUsername(str);
   string serverInfo = getServerInfo(str);
   string userMessage = getUserMessage(str);
+
+  string searchHistory = ircbotName+": search history";
+
+  if (serverInfo.find("PRIVMSG "+ircbotName) != string::npos && connected) {
+    // this is a private message to the irc bot
+    parsePrivateMessage(str, kiwi);
+    return SUCCESS;
+  }
 
   /* the returned str is just what the user text is without the IRC prefix information
    * note: this should not be done this way, a function should be called which has the
@@ -448,17 +576,18 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   }
 
   if (stringSearch(userMessage, ircbotName+": help")) {
-    outputToUser(username, "I have all kinds of fun features! Syntax: \""+ircbotName+": <command>\" on the following commands:");
-    outputToUser(username, "\"check authentication\". Checks user access information via NickServ.");
-    outputToUser(username, "\"give history\". Creates tarball of history and puts link on web. (Must be simown, sadger, or jpirie)");
-    outputToUser(username, "\"hide history\". Removes existing tarball of history on web (Must be simown, sadger, or jpirie)");
-    outputToUser(username, "\"give op status\". Gives op status (must be sadger, simown, or jpirie)");
-    outputToUser(username, "\"take op status\". Take op status away (must be sadger, simown, or jpirie)");
-    outputToUser(username, "\"update repo\". Updates the repository I sit in by pulling from the public http link.");
-    outputToUser(username, "\"save data\". Saves data of all "+ircbotName+" plugins.");
-    outputToUser(username, "\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
-    outputToUser(username, "\"history <start|stop>\". Starts/stops logging channel conversation.");
-    outputToUser(username, "\"plugin list\". Lists the current plugins and their activation status.");
+    outputToUser(username, "I have all kinds of fun features! Syntax: \""+ircbotName+": <command>\" on the following commands:\n"
+		 "\"check authentication\". Checks user access information via NickServ.\n"
+		 "\"give history\". Creates tarball of history and puts link on web. (Must be simown, sadger, or jpirie)\n"
+		 "\"search history <string>\". Searches history. (Must be simown, sadger, or jpirie)\n"
+		 "\"hide history\". Removes existing tarball of history on web (Must be simown, sadger, or jpirie)\n"
+		 "\"give op status\". Gives op status (must be sadger, simown, or jpirie)\n"
+		 "\"take op status\". Take op status away (must be sadger, simown, or jpirie)\n"
+		 "\"update repo\". Updates the repository I sit in by pulling from the public http link.\n"
+		 "\"save data\". Saves data of all "+ircbotName+" plugins.\n"
+		 "\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(\n"
+		 "\"history <start|stop>\". Starts/stops logging channel conversation.\n"
+		 "\"plugin list\". Lists the current plugins and their activation status.");
   }
   else if (stringSearch(userMessage, ircbotName+": update repo")) {
     cout << "Updating repository..." << endl;
@@ -483,6 +612,22 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 	string historyCommand = "tar -czf kiwi-history.tar.gz history/; mv kiwi-history.tar.gz ~/public_html/";
 	runProcessWithReturn(historyCommand.c_str());
 	outputToUser(username, "Latest history tarball available at http://www.macs.hw.ac.uk/~jp95/kiwi-history.tar.gz.");
+      }
+      else
+	outputToUser(username, "You must be authenticated with NickServ to use this command.");
+    }
+    else
+      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
+  }
+  else if (int x = stringSearch(userMessage, searchHistory)) {
+    if (username == "sadger" || username == "jpirie" || username == "simown") {
+      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
+	// we remove three at the end to remove the newline character
+	string userString = userMessage.substr(x + searchHistory.length(), userMessage.length()-searchHistory.length()-3);
+	string targetString = "grep -i \""+userString+"\" history/*.log | sort -r";
+	cout << "running shell command: " << targetString << endl;
+	string results = runProcessWithReturn(targetString.c_str());
+	outputToUser(username, results);
       }
       else
 	outputToUser(username, "You must be authenticated with NickServ to use this command.");

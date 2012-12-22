@@ -54,6 +54,7 @@ public:
   void sendPong(std::string buf);
 
   int parseMessage(std::string buf, Kiwi);
+  void parsePrivateMessage(std::string buf, Kiwi);
   int checkAndParseMessages ();
 
 };
