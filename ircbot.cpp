@@ -549,6 +549,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   string userMessage = getUserMessage(str);
 
   string searchHistory = ircbotName+": search history";
+  string viewHistory = ircbotName+": view history";
 
   if (serverInfo.find("PRIVMSG "+ircbotName) != string::npos && connected) {
     // this is a private message to the irc bot
@@ -580,6 +581,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 		 "\"check authentication\". Checks user access information via NickServ.\n"
 		 "\"give history\". Creates tarball of history and puts link on web. (Must be simown, sadger, or jpirie)\n"
 		 "\"search history <string>\". Searches history. (Must be simown, sadger, or jpirie)\n"
+		 "\"view history <log name>\". Displays history file. (Must be simown, sadger, or jpirie)\n"
 		 "\"hide history\". Removes existing tarball of history on web (Must be simown, sadger, or jpirie)\n"
 		 "\"give op status\". Gives op status (must be sadger, simown, or jpirie)\n"
 		 "\"take op status\". Take op status away (must be sadger, simown, or jpirie)\n"
@@ -628,6 +630,31 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 	cout << "running shell command: " << targetString << endl;
 	string results = runProcessWithReturn(targetString.c_str());
 	outputToUser(username, results);
+      }
+      else
+	outputToUser(username, "You must be authenticated with NickServ to use this command.");
+    }
+    else
+      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
+  }
+  else if (int x = stringSearch(userMessage, viewHistory)) {
+    if (username == "sadger" || username == "jpirie" || username == "simown") {
+      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
+	// we remove three at the end to remove the newline character
+	string userString = userMessage.substr(x + viewHistory.length(), userMessage.length()-viewHistory.length()-3);
+
+        /* first check the file exsits
+	 * don't want to bring in boost just for this, so running a shell command to check */
+	string checkFileExists = "if [ -f history/"+userString+" ]; then echo \"yes\"; else echo \"no\"; fi";
+	string results = runProcessWithReturn(checkFileExists.c_str());
+	if (stringSearch(results, "yes")) {
+	  string targetString = "curl -s -S --data-urlencode \"txt=`cat history/"+userString+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
+	  cout << "running shell command: " << targetString << endl;
+	  string results = runProcessWithReturn(targetString.c_str());
+	  outputToUser(username, "History file available at: "+results);
+	}
+	else
+	  outputToUser(username, "History file '"+userString+"' does not exist!");
       }
       else
 	outputToUser(username, "You must be authenticated with NickServ to use this command.");
