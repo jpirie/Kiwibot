@@ -1,40 +1,7 @@
-o History output should be perhaps on pastebin? It will be pretty
-large. Maybe the user should have the option somehow...
-
-o When searching for history, the line the user just sent is included
-in the results. This should not happen.
-
-o The next/prev system when displaying information privately to users
-should be able to handle pages (e.g. next 3 should display page 3, or
-something).
-
-o When searching through the history, the user should be able to
-specify a starting date (or perhaps a range of dates?). Something more
-sophisticated anyway.
-
-o The 'history/' folder name should not be displayed to the user when
-searching for history items. This is essentially irrelevant and taking
-up screen space (it's coming from the shell command output).
-
-o last-seen plugin has a bug where if a user is connected to the
+ o last-seen plugin has a bug where if a user is connected to the
 channel and then we say !seen <user>, we get the date they last
 disconnected. The bot should say something like "They are connected
 right now!" or something.
 
-o We should check the authentication of all users connected to the
-channel when the bot joins. As it checks authentication whenever
-another user joins it works for now (users can use <name of bot>: check
-authentication to force the process), but it would be nice to fix.
-
-o The map of what text we were relaying to users (e.g. history
-searching) should probably be updated when a user leaves the channel
-so the information is not left hanging around.
-
 o Users should be able to talk to the kiwi in private chat with normal
 commands (e.g. <botname>: help). Currently this isn't handled.
-
-o A plugin which wishes to send a user a private message should get
-access to the nice next/prev system we have, currently it does not
-because it executes a different function. Essentially,
-sendLuaPrivateMessage should call sendToUser (this name difference is
-also inconsistent?).

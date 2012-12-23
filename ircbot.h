@@ -20,7 +20,6 @@ public:
 
   bool setup;
   int outputToChannel(std::string);
-  int outputToUser(std::string, std::string);
 
   void init(std::string, std:: string);
 
@@ -48,8 +47,6 @@ public:
   void loadData();
 
   char * timeNow();
-
-  int sendMessage(std::string);
 
   void sendPong(std::string buf);
 

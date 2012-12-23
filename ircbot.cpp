@@ -92,6 +92,10 @@ std::string runProcessWithReturn(const char* cmd) {
     return stdout;
 }
 
+std::string createTempFile() {
+  return runProcessWithReturn("mktemp");
+}
+
 // searches for a string in another given string
 bool stringSearch(string toSearch, string searchFor) {
   return (toSearch.find(searchFor) != string::npos);
@@ -202,23 +206,52 @@ int sendLuaMessage(lua_State *luaState) {
   return 0;
 }
 
+// sends an outgoing message to the IRC server
+int sendMessage(string msg) {
+  msg += "\r\n";
+  // send the message to the server
+  return send(connectionSocket,msg.c_str(),msg.length(),0);
+}
+
+// outputs a message to the irc channel
+int outputToUser(string username, string msg) {
+  cout << "Message going to user: " << msg << endl;
+
+  /* put the lines to send in a vector, we might need it if we want to send
+   * the user a lot of information */
+  vector<string> linesToSend;
+  istringstream ss( msg );
+  while (!ss.eof()) {
+      string x;
+      getline( ss, x, '\n' );
+      linesToSend.push_back(x);
+    }
+
+  if (linesToSend.size() <= MAX_LINES_OUTPUT)
+    // let's not bother with any fanciness, they only want a few lines. Send them everything.
+    for(vector<string>::iterator it = linesToSend.begin(); it != linesToSend.end(); ++it) {
+      sendMessage("PRIVMSG "+username+" :"+(*it));
+    }
+  else {
+    /* we have to consider flooding in this case so we have to do something more sophisticated
+     * add the lines we need to send to the user in the right hand side of a map, with the key
+     * being their username */
+    cout << "Too many lines to send, adding to map." << endl;
+    userTextManagement currentUser;
+    currentUser.textPosition = MAX_LINES_OUTPUT;
+    currentUser.text = linesToSend;
+    directUserText[username] = currentUser;
+    for (unsigned i=0; i<MAX_LINES_OUTPUT; i++)
+      sendMessage("PRIVMSG "+username+" :"+linesToSend.at(i));
+    sendMessage("PRIVMSG "+username+" :[ Commands: 'next' (see next page); 'prev' (see previous page) ]");
+  }
+}
+
 // same as sendLuaMessage but for private messages
 int sendLuaPrivateMessage(lua_State *luaState) {
-  string msg = "PRIVMSG ";
   lua_gettop(luaState);
-
-  // 1 is the first index of the argument array sent back, the username
-  string username = lua_tostring(luaState, 1);
-  msg  += username;
-  msg  += " :";
-  // 2 is the second index of the argument array sent back, the string
-  string message = lua_tostring(luaState, 2);
-  msg  += message;
-
-  // add carridge return and new line to the end of messages
-  msg += "\r\n";
-
-  send(connectionSocket,msg.c_str(),msg.length(),0);
+  // first parameter: username, second parameter: message
+  outputToUser(lua_tostring(luaState, 1), lua_tostring(luaState, 2));
   return 0;
 }
 
@@ -348,49 +381,10 @@ string IrcBot::checkServerMessages(char* buffer, size_t size) {
   return str;
 }
 
-// sends an outgoing message to the IRC server
-int IrcBot::sendMessage(string msg) {
-  msg += "\r\n";
-  // send the message to the server
-  return send(connectionSocket,msg.c_str(),msg.length(),0);
-}
-
 // outputs a message to the irc channel
 int IrcBot::outputToChannel(string msg) {
   writeHistory(this->nick.c_str(), "", msg+"\r\n");
   sendMessage(channelSendString+msg);
-}
-
-// outputs a message to the irc channel
-int IrcBot::outputToUser(string username, string msg) {
-  cout << "Message going to user: " << msg << endl;
-
-  /* put the lines to send in a vector, we might need it if we want to send
-   * the user a lot of information */
-  vector<string> linesToSend;
-  istringstream ss( msg );
-  while (!ss.eof()) {
-      string x;
-      getline( ss, x, '\n' );
-      linesToSend.push_back(x);
-    }
-
-  if (linesToSend.size() <= MAX_LINES_OUTPUT)
-    // let's not bother with any fanciness, they only want a few lines. Send them everything.
-    sendMessage("PRIVMSG "+username+" :"+msg);
-  else {
-    /* we have to consider flooding in this case so we have to do something more sophisticated
-     * add the lines we need to send to the user in the right hand side of a map, with the key
-     * being their username */
-    cout << "Too many lines to send, adding to map." << endl;
-    userTextManagement currentUser;
-    currentUser.textPosition = MAX_LINES_OUTPUT;
-    currentUser.text = linesToSend;
-    directUserText[username] = currentUser;
-    for (unsigned i=0; i<MAX_LINES_OUTPUT; i++)
-      sendMessage("PRIVMSG "+username+" :"+linesToSend.at(i));
-    sendMessage("PRIVMSG "+username+" :[ Commands: 'next' (see next page); 'prev' (see previous page) ]");
-  }
 }
 
 // sends the pong packet so the IRC server knows that we're alive
@@ -488,7 +482,6 @@ void IrcBot::parsePrivateMessage(string str, Kiwi kiwi) {
     }
     int startPoint = userText.textPosition;
     int endPoint = userText.textPosition+MAX_LINES_OUTPUT;
-    cout << "Text position: " << userText.textPosition << endl;
     for (unsigned i=startPoint; i<endPoint; i++) {
       try {
 	sendMessage("PRIVMSG "+username+" :"+userText.text.at(i));
@@ -521,9 +514,6 @@ void IrcBot::parsePrivateMessage(string str, Kiwi kiwi) {
 	userText.textPosition = userText.text.size() - (userText.text.size() % MAX_LINES_OUTPUT) - MAX_LINES_OUTPUT;
       else
 	userText.textPosition = userText.textPosition - MAX_LINES_OUTPUT*2;
-
-      cout << "userText.textPosition = " << userText.textPosition << endl;
-      cout << "userText.text.size() = " << userText.text.size() << endl;
 
       int startPoint = userText.textPosition;
       int endingPoint = userText.textPosition+MAX_LINES_OUTPUT;
@@ -562,17 +552,42 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
    *       sole purpose of getting the user text from the full message */
   writeHistory(username, serverInfo, userMessage);
 
-  if (stringSearch(str, "End of /NAMES list"))
+  if (stringSearch(str, "End of /NAMES list")) {
     connected = true;  // intro messages to the server have finished
+    string beginningTrimmed = str.substr(str.find(channelName)+channelName.size()+2);
+    string namesString = beginningTrimmed.substr(0, beginningTrimmed.find(":")-2);
+
+    vector<string> namesOfUsersConnected;
+    istringstream ss( namesString );
+    while (!ss.eof()) {
+      string x;
+      getline( ss, x, ' ' );
+      namesOfUsersConnected.push_back(x);
+    }
+
+    for(vector<string>::iterator iter = namesOfUsersConnected.begin(); iter != namesOfUsersConnected.end(); ++iter) {
+      if (*iter != ircbotName) {
+	string adminSymbolRemoved = *iter;
+	if (adminSymbolRemoved.substr(0, 1) == "@")
+	  adminSymbolRemoved = adminSymbolRemoved.substr(1, adminSymbolRemoved.length());
+	  string checkAccess = "PRIVMSG NickServ : ACC " + adminSymbolRemoved;
+	  sendMessage(checkAccess);
+      }
+    }
+  }
 
   if (serverInfo.find("JOIN") != string::npos) {
     string checkAccess = "PRIVMSG NickServ : ACC " + username;
     sendMessage(checkAccess);
   }
-  // for detecting them leaving the channel
-  if (serverInfo.find("PART") != string::npos || serverInfo.find("QUIT") != string::npos) {
+  else if (serverInfo.find("PART") != string::npos || serverInfo.find("QUIT") != string::npos) {
+    // for detecting them leaving the channel
+
+    // wipe the username from the map responsible for relaying text
+    directUserText.erase(username);
+
     std::vector<string>::iterator position = std::find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username);
-    if (position != authenticatedUsernames.end()) // == vector.end() means the element was not found
+    if (position != authenticatedUsernames.end())
       authenticatedUsernames.erase(position);
   }
 
@@ -625,11 +640,17 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     if (username == "sadger" || username == "jpirie" || username == "simown") {
       if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
 	// we remove three at the end to remove the newline character
+	string tempFile = createTempFile();
 	string userString = userMessage.substr(x + searchHistory.length(), userMessage.length()-searchHistory.length()-3);
-	string targetString = "grep -i \""+userString+"\" history/*.log | sort -r";
+	// show no other searches through history in the output, this likely isn't useful
+	string targetString = "grep -i \""+userString+"\" history/*.log | grep -v \"search history\" | sort -r > "+tempFile;
 	cout << "running shell command: " << targetString << endl;
-	string results = runProcessWithReturn(targetString.c_str());
-	outputToUser(username, results);
+	runProcessWithReturn(targetString.c_str());
+	string toPastebinString = "curl -s -S --data-urlencode \"txt=`cat "+tempFile+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
+	cout << "running shell command: " << toPastebinString << endl;
+	string pastebinLink = runProcessWithReturn(toPastebinString.c_str());
+
+	outputToUser(username, "Search results available at the following link: "+pastebinLink);
       }
       else
 	outputToUser(username, "You must be authenticated with NickServ to use this command.");
