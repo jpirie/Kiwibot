@@ -4,28 +4,28 @@
 namesToAcknowledge = {}
 namesToRelay = {}
 
-function relayParse(username, serverPart, userMessage)
+function relayParse(username, serverPart, userMessage, isPrivateMessage)
   -- make the current line lower case
   botname = getBotName():lower()
   userMessage = userMessage:lower()
 
   if (string.find(userMessage, botname..": acknowledge")) then
     table.insert(namesToAcknowledge, username)
-    sendLuaMessage("I will acknowledge your messages.")
+    sendLuaMessageToSource(username, "I will acknowledge your messages.", isPrivateMessage)
   elseif (string.find(userMessage, botname..": relay")) then
     table.insert(namesToRelay, username)
-    sendLuaMessage("I will relay messages privately to you.")
+    sendLuaMessageToSource(username, "I will relay messages privately to you.", isPrivateMessage)
   elseif (string.find(userMessage, botname..": stop acknowledge")) then
     local findUser = false
     for key,value in pairs(namesToAcknowledge) do
       if (value == username) then
 	table.remove(namesToAcknowledge, key)
 	findUser = true
-	sendLuaMessage("Acknowledgement stopped.")
+	sendLuaMessageToSource(username, "Acknowledgement stopped.", isPrivateMessage)
       end
     end
     if (findUser == false) then
-      sendLuaMessage("I wasn't acknowledging your messages!")
+      sendLuaMessageToSource(username, "I wasn't acknowledging your messages!", isPrivateMessage)
     end
   elseif (string.find(userMessage, botname..": stop relay")) then
     local findUser = false
@@ -33,11 +33,11 @@ function relayParse(username, serverPart, userMessage)
       if (value == username) then
 	table.remove(namesToRelay, key)
 	findUser = true
-	sendLuaMessage("Relay stopped.")
+	sendLuaMessageToSource(username, "Relay stopped.", isPrivateMessage)
       end
     end
     if (findUser == false) then
-      sendLuaMessage("I wasn't relaying messages!")
+      sendLuaMessageToSource(username, "I wasn't relaying messages!", isPrivateMessage)
     end
   end
 

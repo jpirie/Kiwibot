@@ -5,3 +5,6 @@ right now!" or something.
 
 o Users should be able to talk to the kiwi in private chat with normal
 commands (e.g. <botname>: help). Currently this isn't handled.
+
+o If there is no save file when the bot is started, it should be
+created for the user (lua file errors are thrown otherwise).

@@ -20,6 +20,7 @@ public:
 
   bool setup;
   int outputToChannel(std::string);
+  int outputToSource(std::string, std::string, bool);
 
   void init(std::string, std:: string);
 

@@ -60,7 +60,7 @@ function pawnMove(move)
   end
 end
 
-function chessParse(username, serverPart, userMessage)
+function chessParse(username, serverPart, userMessage, isPrivateMessage)
   botname = getBotName():lower()
   if (string.find(userMessage, botname..": new chess game")) then
     if (gameInProgress) then

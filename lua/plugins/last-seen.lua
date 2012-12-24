@@ -67,7 +67,7 @@ function saveLastSeenData ()
   print ("done!")
 end
 
-function lastSeenParse(username, serverPart, userMessage)
+function lastSeenParse(username, serverPart, userMessage, isPrivateMessage)
   -- make the current line lower case
   if (string.find(serverPart, "QUIT")) or (string.find(serverPart, "PART")) then
     local name = ""
@@ -90,9 +90,9 @@ function lastSeenParse(username, serverPart, userMessage)
     -- grab the name the user supplied (we take away 2 from the length of the string because we don't want the \n part (not one char... odd)
     local name = userMessage:sub(string.find(userMessage, seenCommand)+string.len(seenCommand),string.len(userMessage)-2)
     if namesSeen[name] then
-      sendLuaMessage(name.." last seen "..namesSeen[name]);
+      sendLuaMessageToSource(username, name.." last seen "..namesSeen[name], isPrivateMessage);
     else
-      sendLuaMessage("I know not of the person you speak of. Quite the mystery indeed.");
+      sendLuaMessageToSource(username, "I know not of the person you speak of. Quite the mystery indeed.", isPrivateMessage);
     end
   elseif (string.find(userMessage, "!seenall")) then
     local outputString = "Here's when I last saw peeps:\n"

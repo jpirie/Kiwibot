@@ -14,23 +14,23 @@ local linesEncountered = 0
 
 -- we should really be looking for regexps or something, not
 -- straight strings.
-function animalParse(username, serverPart, userMessage)
+function animalParse(username, serverPart, userMessage, isPrivateMessage)
   -- make the current line lower case
   userMessage = userMessage:lower()
   botname = getBotName():lower()
 
   if (string.find(userMessage, botname)) then
     if (string.find(userMessage, "cup of tea")) then
-      sendLuaMessage("but of course! CREE-CREE!")
+      sendLuaMessageToSource(username, "but of course! CREE-CREE!", isPrivateMessage)
     elseif (string.find(userMessage, "pets")) then
-      sendLuaMessage("Aww. Thanks! Wuv you! <3")
+      sendLuaMessageToSource(username, "Aww. Thanks! Wuv you! <3", isPrivateMessage)
     elseif (string.find(userMessage, "silly")) then
-      sendLuaMessage("Oops I am a bit daft sometimes aren't I. CREE!")
+      sendLuaMessageToSource(username, "Oops I am a bit daft sometimes aren't I. CREE!", isPrivateMessage)
     end
   end
   if (string.find(userMessage, "feeds "..botname)) then
     -- we should add points to the user that feeds kiwi so that it loves that user more
-    sendLuaMessage(thanksSynonyms[math.random(#thanksSynonyms)])
+    sendLuaMessageToSource(username, thanksSynonyms[math.random(#thanksSynonyms)], isPrivateMessage)
     if hunger < 500 then
       hunger = hunger + 500;
     else
@@ -41,14 +41,14 @@ function animalParse(username, serverPart, userMessage)
     -- check for hello messages
     for _,greeting in pairs(helloSynonyms) do
       if (string.find(userMessage, greeting.." "..botname)) then
-	sendLuaMessage("hi, CREE!")
+	sendLuaMessageToSource(username, "hi, CREE!", isPrivateMessage)
       end
     end
 
     -- check for goodbye messages
     for _,farewells in pairs(byeSynonyms) do
       if (string.find(userMessage, farewells.." "..botname)) then
-	sendLuaMessage("Laters, I'll keep this channel in check for you, have no fear!")
+	sendLuaMessageToSource(username, "Laters, I'll keep this channel in check for you, have no fear!", isPrivateMessage)
       end
     end
   end

@@ -255,6 +255,32 @@ int sendLuaPrivateMessage(lua_State *luaState) {
   return 0;
 }
 
+/* same as sendMessage but called by the Lua code and sent to a user
+ * if message was sent privately */
+int sendLuaMessageToSource(lua_State *luaState) {
+  string msg = channelSendString;
+  lua_gettop(luaState);
+
+  string username = lua_tostring(luaState, 1);
+
+  string messageOnly = lua_tostring(luaState, 2);
+  msg  += messageOnly;
+
+  bool isPrivateMessage = lua_toboolean(luaState, 3);
+
+  // add carridge return and new line to the end of messages
+  msg += "\r\n";
+
+  if (isPrivateMessage)
+    sendLuaPrivateMessage(luaState);
+  else {
+    // update the history file
+    writeHistory(ircbotName, "", messageOnly + "\r\n");
+    send(connectionSocket,msg.c_str(),msg.length(),0);
+  }
+  return 0;
+}
+
 /* initialises the irc bot. Gives birth to a new kiwi,
    and sets of sockets for communication */
 void IrcBot::init(string channel, string password) {
@@ -270,6 +296,7 @@ void IrcBot::init(string channel, string password) {
   this->luaState = lua_open();
   luaL_openlibs(luaState);
   lua_register(luaState, "sendLuaMessage", sendLuaMessage);
+  lua_register(luaState, "sendLuaMessageToSource", sendLuaMessageToSource);
   lua_register(luaState, "getBotName", getBotName);
   lua_register(luaState, "sendLuaPrivateMessage", sendLuaPrivateMessage);
   std::cerr << "-- Loading plugin: " << "lua/loader.lua" << std::endl;
@@ -385,6 +412,15 @@ string IrcBot::checkServerMessages(char* buffer, size_t size) {
 int IrcBot::outputToChannel(string msg) {
   writeHistory(this->nick.c_str(), "", msg+"\r\n");
   sendMessage(channelSendString+msg);
+}
+
+int IrcBot::outputToSource(string msg, string username, bool isPrivateMessage) {
+  if (isPrivateMessage)
+    outputToUser(username, msg);
+  else {
+    writeHistory(this->nick.c_str(), "", msg+"\r\n");
+    sendMessage(channelSendString+msg);
+  }
 }
 
 // sends the pong packet so the IRC server knows that we're alive
@@ -537,6 +573,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   string username = getUsername(str);
   string serverInfo = getServerInfo(str);
   string userMessage = getUserMessage(str);
+  bool isPrivateMessage = false;
 
   string searchHistory = ircbotName+": search history";
   string viewHistory = ircbotName+": view history";
@@ -544,13 +581,14 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   if (serverInfo.find("PRIVMSG "+ircbotName) != string::npos && connected) {
     // this is a private message to the irc bot
     parsePrivateMessage(str, kiwi);
-    return SUCCESS;
+    isPrivateMessage = true;
   }
 
   /* the returned str is just what the user text is without the IRC prefix information
    * note: this should not be done this way, a function should be called which has the
    *       sole purpose of getting the user text from the full message */
-  writeHistory(username, serverInfo, userMessage);
+  if (!isPrivateMessage)
+    writeHistory(username, serverInfo, userMessage);
 
   if (stringSearch(str, "End of /NAMES list")) {
     connected = true;  // intro messages to the server have finished
@@ -608,10 +646,10 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
   }
   else if (stringSearch(userMessage, ircbotName+": update repo")) {
     cout << "Updating repository..." << endl;
-    outputToChannel("Update the repo? Sure thing!");
+    outputToSource("Update the repo? Sure thing!", username, isPrivateMessage);
     system("cd ~/repos/kiwibot; git pull http master; git pull http dynamic-plugins");
     cout << "done updating repository." << endl;
-    outputToChannel("All done boss! <3");
+    outputToSource("All done boss! <3", username, isPrivateMessage);
   }
   else if (stringSearch(userMessage, ircbotName+": save data")) {
     cout << "Saving all "+ircbotName+" data..." << endl;
@@ -720,33 +758,45 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
   }
   else if (stringSearch(userMessage, ircbotName+": shutdown")) {
-    outputToChannel("Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
-    sendMessage("QUIT");
-    close (connectionSocket);  //close the open socket
-    cout << "Shutting down...";
-    return SHUTDOWN;
+    if (isPrivateMessage)
+      outputToUser(username, "This command cannot be used in private chat.");
+    else {
+      outputToChannel("Oh I get it. It's fine, I'm a pain sometimes I guess. Croo.");
+      sendMessage("QUIT");
+      close (connectionSocket);  //close the open socket
+      cout << "Shutting down...";
+      return SHUTDOWN;
+    }
   }
   else if (stringSearch(userMessage, ircbotName+": history start")) {
-    if (loggingHistory) {
-       loggingHistory = false;
-       outputToChannel("I'm already keeping my ears peeled for tasty parsable information!");
-       loggingHistory = true;
-    }
+    if (isPrivateMessage)
+      outputToUser(username, "This command cannot be used in private chat.");
     else {
-       outputToChannel("My ears are now open, I shall store future conversations for tasty parsing later.");
-       loggingHistory = true;
+      if (loggingHistory) {
+	loggingHistory = false;
+	outputToChannel("I'm already keeping my ears peeled for tasty parsable information!");
+	loggingHistory = true;
+      }
+      else {
+	outputToChannel("My ears are now open, I shall store future conversations for tasty parsing later.");
+	loggingHistory = true;
+      }
     }
   }
   else if (stringSearch(userMessage, ircbotName+": history stop")) {
-    if (loggingHistory) {
-       loggingHistory = false;
-       outputToChannel("Ah I see, cunning secret conversations. I know not of what you speak, your sneakrets are safe with me.");
+    if (isPrivateMessage)
+      outputToUser(username, "This command cannot be used in private chat.");
+    else {
+      if (loggingHistory) {
+	loggingHistory = false;
+	outputToChannel("Ah I see, cunning secret conversations. I know not of what you speak, your sneakrets are safe with me.");
+      }
+      else
+	outputToChannel("My ears are already shut to your sneakiness. I'll keep it secret. I'll keep it safe.");
     }
-    else
-       outputToChannel("My ears are already shut to your sneakiness. I'll keep it secret. I'll keep it safe.");
   }
   else if (stringSearch(userMessage, ircbotName+": check authentication")) {
-    outputToChannel("I'll get on the dog and bone to NickServ straight away.");
+    outputToSource("I'll get on the dog and bone to NickServ straight away.", username, isPrivateMessage);
     string checkAccess = "PRIVMSG NickServ : ACC " + username;
     sendMessage(checkAccess);
   }
@@ -823,6 +873,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
     lua_pushstring(luaState, username.c_str());   // parameter one: the user's name who may be talking
     lua_pushstring(luaState, serverInfo.c_str()); // parameter two: the server part of the message
     lua_pushstring(luaState, userMessage.c_str()); // parameter three: the user message
+    lua_pushboolean(luaState, isPrivateMessage); // parameter four: whether the message is privately sent
 
     // parameter five: give new table for storing the updated files list
     lua_createtable(luaState, updatedFiles.size(), 0);
@@ -835,7 +886,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
       index++;
     }
 
-    // parameter five: a new table for storing the plugins that have been deleted
+    // parameter six: a new table for storing the plugins that have been deleted
     lua_createtable(luaState, deletedFiles.size(), 0);
     int deletedFilesTable = lua_gettop(luaState);
     index = 1;
@@ -856,7 +907,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
 
     // call the global function that's been assigned (5 denotes the number of parameters)
-    int errors = lua_pcall(luaState, 5, 0, 0);
+    int errors = lua_pcall(luaState, 6, 0, 0);
 
     if (firstPluginLoad) {
       loadData();

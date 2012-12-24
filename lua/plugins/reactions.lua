@@ -1,8 +1,8 @@
-function reaction(username, serverPart, userMessage)
+function reaction(username, serverPart, userMessage, isPrivateMessage)
   local botname = getBotName():lower()
   userMessage = userMessage:lower()
   if (string.find(userMessage, "oh boy")) then
-    sendLuaMessage("http://derpface.com/wp-content/uploads/2012/11/Oh-Boy-Reaction-Gif.gif")
+    sendLuaMessageToSource(username, "http://derpface.com/wp-content/uploads/2012/11/Oh-Boy-Reaction-Gif.gif", isPrivateMessage)
   end
 end
 

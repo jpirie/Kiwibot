@@ -1,4 +1,4 @@
-function managePlugins(username, serverPart, userMessage)
+function managePlugins(username, serverPart, userMessage, isPrivateMessage)
   local function listPlugins(userMessage)
     local plugin_list = ""
     local first_plugin = false
@@ -13,7 +13,7 @@ function managePlugins(username, serverPart, userMessage)
         end
       end
     end
-    sendLuaMessage("Plugins loaded: " .. plugin_list)
+    sendLuaMessageToSource(username, "Plugins loaded: " .. plugin_list, isPrivateMessage)
   end
 
   local function unloadPlugins(userMessage)
@@ -34,7 +34,7 @@ function managePlugins(username, serverPart, userMessage)
     if pluginFound then
       sendLuaMessage("Unloading plugin " .. pluginName)
     else
-      sendLuaMessage("No such plugin " .. pluginName)
+      sendLuaMessageToSource(username, "No such plugin " .. pluginName, isPrivateMessage)
     end
   end
 
@@ -48,7 +48,7 @@ function managePlugins(username, serverPart, userMessage)
     local alreadyLoaded = false
     for i,loaded_plugin in ipairs(loadedPlugins) do
       if(loaded_plugin.name == pluginName) then
-        sendLuaMessage("Plugin " .. pluginName .. " already loaded")
+        sendLuaMessageToSource(username, "Plugin " .. pluginName .. " already loaded", isPrivateMessage)
         alreadyLoaded = true
       end 
     end

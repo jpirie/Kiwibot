@@ -66,11 +66,11 @@ function saveUrlHandlingData ()
   print ("done!")
 end
 
-function urlhandlingParse(username, serverPart, userMessage)
+function urlhandlingParse(username, serverPart, userMessage, isPrivateMessage)
   -- make links clickable that start with a missing w
   local missingW = "^ww%.%w+%.%w+"
   if string.find(userMessage, missingW) ~= nil then
-    sendLuaMessage("clickable: "..string.gsub(userMessage, missingW, "w%1"))
+    sendLuaMessageToSource(username, "clickable: "..string.gsub(userMessage, missingW, "w%1"), isPrivateMessage)
   end
 
   local missingWInText = " ww%.%w+%.%w+"
@@ -81,12 +81,12 @@ function urlhandlingParse(username, serverPart, userMessage)
     if findExtraText ~= nil then
       replaceSpaceWithW = string.sub(replaceSpaceWithW, 0, findExtraText-1)
     end
-    sendLuaMessage("clickable: "..replaceSpaceWithW)
+    sendLuaMessageToSource(username, "clickable: "..replaceSpaceWithW, isPrivateMessage)
   end
 
   local missingStartingH = "^ttp://%w+"
   if string.find(userMessage, missingStartingH) ~= nil then
-    sendLuaMessage("clickable: "..string.gsub(userMessage, missingStartingH, "h%1"))
+    sendLuaMessage(username, "clickable: "..string.gsub(userMessage, missingStartingH, "h%1"), isPrivateMessage)
   end
 
   local missingHInText = " ttp://%w+%.%w+"
@@ -97,7 +97,7 @@ function urlhandlingParse(username, serverPart, userMessage)
     if findExtraText ~= nil then
       replaceSpaceWithH = string.sub(replaceSpaceWithH, 0, findExtraText-1)
     end
-    sendLuaMessage("clickable: "..replaceSpaceWithH)
+    sendLuaMessage(username, "clickable: "..replaceSpaceWithH, isPrivateMessage)
   end
 
 end
