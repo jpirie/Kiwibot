@@ -4,6 +4,9 @@ function reaction(username, serverPart, userMessage, isPrivateMessage)
   if (string.find(userMessage, "oh boy")) then
     sendLuaMessageToSource(username, "http://derpface.com/wp-content/uploads/2012/11/Oh-Boy-Reaction-Gif.gif", isPrivateMessage)
   end
+  if (string.find(userMessage, "baffling")) then
+    sendLuaMessageToSource(username, "http://www.jpirie.com/files/baffling.gif", isPrivateMessage)
+  end
 end
 
 
