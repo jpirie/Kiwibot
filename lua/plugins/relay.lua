@@ -5,6 +5,11 @@ namesToAcknowledge = {}
 namesToRelay = {}
 
 function relayParse(username, serverPart, userMessage, isPrivateMessage)
+  if userMessage == "" or username == "NickServ" or username == "" then
+    print "returning."
+    return
+  end
+
   -- make the current line lower case
   botname = getBotName():lower()
   userMessage = userMessage:lower()
@@ -41,11 +46,14 @@ function relayParse(username, serverPart, userMessage, isPrivateMessage)
     end
   end
 
+  -- the user has asked us to acknowledge messages. If we see a message from that user, acknowledge it
   for key,value in pairs(namesToAcknowledge) do
     if (username == value) then
       sendLuaPrivateMessage(username, userMessage)
     end
   end
+
+  -- the user has asked us to relay messages. If they weren't the sender, then relay the message
   for key,value in pairs(namesToRelay) do
     if (username ~= value) then
     sendLuaPrivateMessage(value, username..": "..userMessage)
