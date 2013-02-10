@@ -29,14 +29,18 @@ function animalParse(username, serverPart, userMessage, isPrivateMessage)
     end
   end
   if (string.find(userMessage, "feeds "..botname)) then
-    -- we should add points to the user that feeds kiwi so that it loves that user more
-    sendLuaMessageToSource(username, thanksSynonyms[math.random(#thanksSynonyms)], isPrivateMessage)
-    if hunger < 500 then
-      hunger = hunger + 500;
+    if (string.find(userMessage, "turd") or string.find(userMessage, "poo")) then
+      sendLuaMessageToSource(username, string.upper("NO "..username.."! BAD "..username.."!"), isPrivateMessage)
     else
-      hunger = HUNGER_MAX
+      -- we should add points to the user that feeds kiwi so that it loves that user more
+      sendLuaMessageToSource(username, thanksSynonyms[math.random(#thanksSynonyms)], isPrivateMessage)
+      if hunger < 500 then
+        hunger = hunger + 500;
+      else
+        hunger = HUNGER_MAX
+      end
+      whineLevel = math.floor(hunger / 2)
     end
-    whineLevel = math.floor(hunger / 2)
   else
     -- check for hello messages
     for _,greeting in pairs(helloSynonyms) do

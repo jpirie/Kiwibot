@@ -293,7 +293,7 @@ void IrcBot::init(string channel, string password) {
   this->kiwi = kiwi;
 
   // load the plugin system
-  this->luaState = lua_open();
+  this->luaState = luaL_newstate();
   luaL_openlibs(luaState);
   lua_register(luaState, "sendLuaMessage", sendLuaMessage);
   lua_register(luaState, "sendLuaMessageToSource", sendLuaMessageToSource);
