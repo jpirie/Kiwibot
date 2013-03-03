@@ -82,6 +82,9 @@ int main(int argc, char* argv[]) {
 
       /* start the main loop where we check for messages */
       botStatus = bot.mainLoop();
+
+      if (botStatus == DISCONNECTED)
+	cout << "DISCONNECTED status reported. Re-connecting the kiwi to the world..." << endl;
     }
   }
 
