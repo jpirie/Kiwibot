@@ -1,4 +1,6 @@
 #include <iostream>
+#include <unistd.h>
+#include "timer.h"
 #include "ircbot.h"
 
 using namespace std;
@@ -10,6 +12,11 @@ int main(int argc, char* argv[]) {
   string channel = "#caffeine-addicts";
   string password = "";
   bool connect = true;
+
+  int SUCCESS = 0;   // success flag
+  int DISCONNECTED  = 1; // bot has been disconnected, shut it down
+  int SHUTDOWN  = 2; // shutdown the bot
+
 
   int argumentCounter = 1;
 
@@ -65,15 +72,17 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  int botStatus = 0;
+  int botStatus = SUCCESS;
   if (connect) {
-    IrcBot bot = IrcBot(nick,"USER guest tolmoon tolsun :Ronnie Regan");
+    while (botStatus == SUCCESS | botStatus == DISCONNECTED) {
+      IrcBot bot = IrcBot(nick,"USER guest tolmoon tolsun :Ronnie Regan");
 
-    //initialise the bot on channel specified in parameter
-    bot.init(channel, password);
+      //initialise the bot on channel specified in parameter
+      bot.init(channel, password);
 
-    /* start the main loop where we look at the messages coming in and out */
-    botStatus = bot.mainLoop();
+      /* start the main loop where we check for messages */
+      botStatus = bot.mainLoop();
+    }
   }
 
   return botStatus;

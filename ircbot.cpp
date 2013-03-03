@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <dirent.h>
 
+#include "timer.h"
 #include "ircbot.h"
 
 // headers for lua
@@ -47,11 +48,14 @@ int connectionSocket;
 
 // integer return codes from functions.
 int SUCCESS = 0;   // success flag
-int SHUTDOWN  = 2; // shutdown the kiwi
+int DISCONNECTED  = 1; // bot has been disconnected, shut it down
+int SHUTDOWN  = 2; // shutdown the bot
 
 
 // maximum lines to send to the user at any one time
 int MAX_LINES_OUTPUT = 5;
+
+Timer timer;
 
 // holds information for private messaging to users (e.g. history searching)
 struct userTextManagement {
@@ -179,7 +183,7 @@ void writeHistory(string username, string serverInfo, string userMessage) {
    }
 }
 
-// returns the name of the kiwibot, called by lua
+// returns the name of the bot, called by lua
 int getBotName(lua_State *luaState) {
   lua_pushstring(luaState, ircbotName.c_str());
   return 1;
@@ -281,8 +285,7 @@ int sendLuaMessageToSource(lua_State *luaState) {
   return 0;
 }
 
-/* initialises the irc bot. Gives birth to a new kiwi,
-   and sets of sockets for communication */
+// initialises the irc bot.
 void IrcBot::init(string channel, string password) {
 
   channelSendString = "PRIVMSG "+channel+" :";
@@ -346,7 +349,7 @@ void IrcBot::init(string channel, string password) {
   sendMessage(user);
   checkAndParseMessages();
 
-  // send authentication to NickServ if kiwi set with password
+  // send authentication to NickServ if bot has been set with password
   if (password != "") {
     string authMessage = "PRIVMSG NickServ : identify " + nick + " " + password;
     sendMessage(authMessage);
@@ -359,23 +362,40 @@ void IrcBot::init(string channel, string password) {
   sendMessage(joinMessage);
 
   checkAndParseMessages();
+
+  /* we're now on the channel, start the timer */
+  timer.start();
 }
 
 /* checks for any messages from the server, and parses any that it finds. It
  * also responds to PING request with PONG message. */
 int IrcBot::checkAndParseMessages() {
   char buffer[DATA_SIZE];
+  int botStatus = 0;
 
-  // recieve messegase from the server
+  // recieve messages from the server (will sleep until it receives some)
   message=checkServerMessages(buffer, sizeof(buffer));
 
-  int botStatus;
+  if (connected)
+    cout << "At beginning of checkAndParseMessages. Timer is currently at " << timer.elapsedTime() << endl;
 
   // check for ping messages
-  if (stringSearch(message,"PING "))
+  if (stringSearch(message,"PING ")) {
     sendPong(message);
-  else if (message != "")
+    timer.start();
+  }
+  else if (message != "") {
     botStatus = parseMessage(message, this->kiwi);
+    timer.start();
+  }
+
+  if (connected) {
+    cout << "At end of checkAndParseMessages. Timer (possibly-reset) is at " << timer.elapsedTime() << endl;
+
+    // if we think we have been disconnected
+    if (timer.elapsedTime() > 300)
+      botStatus = DISCONNECTED; // restart the bot
+  }
 
   return botStatus;
 }
@@ -387,7 +407,7 @@ int IrcBot::mainLoop () {
 
   while (1) {
     int botStatus = checkAndParseMessages();
-    if (botStatus == SHUTDOWN)
+    if (botStatus == SHUTDOWN | botStatus == DISCONNECTED)
       return botStatus;
   }
 }
@@ -577,6 +597,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
   string searchHistory = ircbotName+": search history";
   string viewHistory = ircbotName+": view history";
+  string setTopic = ircbotName+": set topic";
 
   if (serverInfo.find("PRIVMSG "+ircbotName) != string::npos && connected) {
     // this is a private message to the irc bot
@@ -667,6 +688,22 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 	string historyCommand = "tar -czf kiwi-history.tar.gz history/; mv kiwi-history.tar.gz ~/public_html/";
 	runProcessWithReturn(historyCommand.c_str());
 	outputToUser(username, "Latest history tarball available at http://www.macs.hw.ac.uk/~jp95/kiwi-history.tar.gz.");
+      }
+      else
+	outputToUser(username, "You must be authenticated with NickServ to use this command.");
+    }
+    else
+      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
+  }
+  else if (int x = stringSearch(userMessage, setTopic)) {
+    if (username == "sadger" || username == "jpirie" || username == "simown") {
+      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
+	// we remove three at the end to remove the newline character
+	string userString = userMessage.substr(x + setTopic.length(), userMessage.length()-setTopic.length()-3);
+	string sendString = "TOPIC "+channelName+" "+userString;
+	cout << "Sending string: " << sendString << endl;
+	//	sendMessage(sendString);
+	outputToUser("ChanServ", sendString);
       }
       else
 	outputToUser(username, "You must be authenticated with NickServ to use this command.");

@@ -86,7 +86,7 @@ function urlhandlingParse(username, serverPart, userMessage, isPrivateMessage)
 
   local missingStartingH = "^ttp://%w+"
   if string.find(userMessage, missingStartingH) ~= nil then
-    sendLuaMessage(username, "clickable: "..string.gsub(userMessage, missingStartingH, "h%1"), isPrivateMessage)
+    sendLuaMessageToSource(username, "clickable: "..string.gsub(userMessage, missingStartingH, "h%1"), isPrivateMessage)
   end
 
   local missingHInText = " ttp://%w+%.%w+"
@@ -97,7 +97,7 @@ function urlhandlingParse(username, serverPart, userMessage, isPrivateMessage)
     if findExtraText ~= nil then
       replaceSpaceWithH = string.sub(replaceSpaceWithH, 0, findExtraText-1)
     end
-    sendLuaMessage(username, "clickable: "..replaceSpaceWithH, isPrivateMessage)
+    sendLuaMessageToSource(username, "clickable: "..replaceSpaceWithH, isPrivateMessage)
   end
 
 end
