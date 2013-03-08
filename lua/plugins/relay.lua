@@ -1,3 +1,29 @@
+----------------------------------------------------------------------
+-- Copyright 2012 2013 William Gatens
+-- Copyright 2012 2013 John Pirie
+--
+-- Kiwibot is a free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+--
+-- Kiwibot is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with Kiwibot.  If not, see <http://www.gnu.org/licenses/>.
+--
+-- Description: Plugin has two functions: 1) Allows the user to
+--              receive messages they send to the channel back through
+--              the Kiwi in a private message. Useful for verification
+--              that messages are getting through. 2) Will ping users
+--              who opt-in when any messages arrive on the channel
+--              (useful for getting notifications for all channel
+--              messages when using AndChat).
+----------------------------------------------------------------------
+
 -- acknowledge.lua
 -- bot acknowledges user messages by sending them back to the user in a private message
 

@@ -1,3 +1,25 @@
+/*********************************************************************
+ * Copyright 2012 2013 William Gatens
+ * Copyright 2012 2013 John Pirie
+ *
+ * Kiwibot is a free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Kiwibot is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Kiwibot.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * Description: Class containing the code for the kiwibot. The main
+ *              program loop, lua initialisation, and servers messages are done
+ *              here, along with other important functions.
+ ********************************************************************/
+
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -291,10 +313,6 @@ void IrcBot::init(string channel, string password) {
   channelSendString = "PRIVMSG "+channel+" :";
   channelName = channel;
 
-  // set up our fun friend - the kiwi
-  Kiwi kiwi = Kiwi();
-  this->kiwi = kiwi;
-
   // load the plugin system
   this->luaState = luaL_newstate();
   luaL_openlibs(luaState);
@@ -385,7 +403,7 @@ int IrcBot::checkAndParseMessages() {
     timer.start();
   }
   else if (message != "") {
-    botStatus = parseMessage(message, this->kiwi);
+    botStatus = parseMessage(message);
     timer.start();
   }
 
@@ -517,7 +535,7 @@ std::string getUserMessage(string fullMessage) {
 }
 
 // a private message sent to the bot directly
-void IrcBot::parsePrivateMessage(string str, Kiwi kiwi) {
+void IrcBot::parsePrivateMessage(string str) {
   string username = getUsername(str);
   string serverInfo = getServerInfo(str);
   string userMessage = getUserMessage(str);
@@ -588,7 +606,7 @@ void IrcBot::parsePrivateMessage(string str, Kiwi kiwi) {
 /* the function which parses the messages that the user sends
  * this should really be in its own file
  */
-int IrcBot::parseMessage(string str, Kiwi kiwi) {
+int IrcBot::parseMessage(string str) {
 
   string username = getUsername(str);
   string serverInfo = getServerInfo(str);
@@ -601,7 +619,7 @@ int IrcBot::parseMessage(string str, Kiwi kiwi) {
 
   if (serverInfo.find("PRIVMSG "+ircbotName) != string::npos && connected) {
     // this is a private message to the irc bot
-    parsePrivateMessage(str, kiwi);
+    parsePrivateMessage(str);
     isPrivateMessage = true;
   }
 

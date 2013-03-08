@@ -1,3 +1,23 @@
+######################################################################
+# Copyright 2013 John Pirie
+#
+# Kiwibot is a free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# Kiwibot is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with Kiwibot.  If not, see <http://www.gnu.org/licenses/>.
+#
+# Description: Notes for the kiwibot. Things we want to do, or any
+#              bugs we might find.
+######################################################################
+
  o last-seen plugin has a bug where if a user is connected to the
 channel and then we say !seen <user>, we get the date they last
 disconnected. The bot should say something like "They are connected

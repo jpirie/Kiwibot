@@ -1,3 +1,29 @@
+----------------------------------------------------------------------
+-- Copyright 2012 William Gatens
+-- Copyright 2012 John Pirie
+--
+-- Kiwibot is a free software: you can redistribute it and/or modify
+-- it under the terms of the GNU General Public License as published by
+-- the Free Software Foundation, either version 3 of the License, or
+-- (at your option) any later version.
+--
+-- Kiwibot is distributed in the hope that it will be useful,
+-- but WITHOUT ANY WARRANTY; without even the implied warranty of
+-- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+-- GNU General Public License for more details.
+--
+-- You should have received a copy of the GNU General Public License
+-- along with Kiwibot.  If not, see <http://www.gnu.org/licenses/>.
+--
+-- Description: A plugin which will keep track of visitors to the
+--              channel. Syntax:
+--
+--   !seen <username>: shows last disconnected date for
+--                     <username>
+--   !seenall: shows full log of disconnected times for all
+--             users
+----------------------------------------------------------------------
+
 -- last-seen.lua
 -- a plugin which will store when a user was last seen on the channel
 
