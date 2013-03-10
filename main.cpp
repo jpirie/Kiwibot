@@ -34,10 +34,9 @@ int main(int argc, char* argv[]) {
   string password = "";
   bool connect = true;
 
-  int SUCCESS = 0;   // success flag
-  int DISCONNECTED  = 1; // bot has been disconnected, shut it down
-  int SHUTDOWN  = 2; // shutdown the bot
-
+  int SUCCESS = 0;        // success flag
+  int DISCONNECTED  = 1;  // bot has been disconnected, shut it down
+  int SHUTDOWN  = 2;      // shutdown the bot
 
   int argumentCounter = 1;
 

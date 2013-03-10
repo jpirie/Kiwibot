@@ -77,7 +77,7 @@ function saveLastSeenData ()
   fileHandler:close()                              -- close file, we're ready to open in write mode
 
   if (not correctSection) then                     -- if we didn't find the section at all
-    lines[#lines + 1] = "[seenall]"                -- put the section in
+    lines[#lines + 1] = "[lastseen]"               -- put the section in
     lines[#lines + 1] = "[end]"
   end
 

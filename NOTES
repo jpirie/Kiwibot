@@ -1,4 +1,5 @@
 ######################################################################
+# Copyright 2013 William Gatens
 # Copyright 2013 John Pirie
 #
 # Kiwibot is a free software: you can redistribute it and/or modify
@@ -21,10 +22,7 @@
  o last-seen plugin has a bug where if a user is connected to the
 channel and then we say !seen <user>, we get the date they last
 disconnected. The bot should say something like "They are connected
-right now!" or something.
-
-o Users should be able to talk to the kiwi in private chat with normal
-commands (e.g. <botname>: help). Currently this isn't handled.
-
-o If there is no save file when the bot is started, it should be
-created for the user (lua file errors are thrown otherwise).
+right now!" or something. ***** Note that we already store a list of
+connected users in the c++, all that we have to do is look up that
+list and see if the user is in it. Not sure if this works corectly for
+nick changes, PARTs and QUITs though...

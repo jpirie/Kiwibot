@@ -34,6 +34,7 @@
 #include <iomanip>
 #include <dirent.h>
 
+#include "lua-interface.h"
 #include "timer.h"
 #include "ircbot.h"
 
@@ -52,13 +53,13 @@ using namespace std;
 // a flag to let us know if we are now connected to channel (not receiving more startup messages)
 bool connected;
 
-// set to false when we have loaded the data from plugins for the first time
-bool firstPluginLoad = true;
-
 // a boolean to toggle whether history is being logged
 bool loggingHistory = true;
 
+vector<string> connectedUsernames;
 vector<string> authenticatedUsernames;
+
+LuaInterface luaInterface;
 
 /* this needs to be a global variable because of a funky issue with the fact
    that C++ functions need specific signatures for lua to call them */
@@ -66,12 +67,10 @@ string channelSendString = "";
 string channelName = "";
 string ircbotName = "";
 
-int connectionSocket;
-
 // integer return codes from functions.
-int SUCCESS = 0;   // success flag
+int SUCCESS = 0;       // success flag
 int DISCONNECTED  = 1; // bot has been disconnected, shut it down
-int SHUTDOWN  = 2; // shutdown the bot
+int SHUTDOWN  = 2;     // shutdown the bot
 
 
 // maximum lines to send to the user at any one time
@@ -92,18 +91,16 @@ IrcBot::IrcBot(string nick, string user) {
   ircbotName = nick;
   this->user  = user;
 
-  map<string, string> luaFileHashes; // a map from file name to hash of the file
-
   message = "";
 }
 
 // we close the connection when deconstructing the bot
 IrcBot::~IrcBot() {
-  lua_close(luaState);      // close down the lua plugin
+  luaInterface.closeState();
   close (connectionSocket); // close the socket
 }
 
-std::string runProcessWithReturn(const char* cmd) {
+std::string IrcBot::runProcessWithReturn(const char* cmd) {
     FILE* pipe = popen(cmd, "r");
     if (!pipe)
       return "an error occurred";
@@ -118,7 +115,7 @@ std::string runProcessWithReturn(const char* cmd) {
     return stdout;
 }
 
-std::string createTempFile() {
+std::string IrcBot::createTempFile() {
   return runProcessWithReturn("mktemp");
 }
 
@@ -127,11 +124,14 @@ bool stringSearch(string toSearch, string searchFor) {
   return (toSearch.find(searchFor) != string::npos);
 }
 
+string IrcBot::getNick() {
+  return this->nick;
+}
 
 /* check to see if there is a history log file available
  * if there isn't, then create one and add the new string received
  * if there is, open it in append mode and add the new string received */
-void writeHistory(string username, string serverInfo, string userMessage) {
+void IrcBot::writeHistory(string username, string serverInfo, string userMessage) {
 
    if (!loggingHistory || !connected || stringSearch(userMessage, ircbotName+": history start") || stringSearch(userMessage, ircbotName+": history stop"))
      return;
@@ -139,7 +139,6 @@ void writeHistory(string username, string serverInfo, string userMessage) {
    // the line that will be output to the history log
    string historyString = "";
 
-   runProcessWithReturn("mkdir -p history/");
    // current date/time based on current system
    time_t now = time(0);
    tm *ltm = localtime(&now);
@@ -205,42 +204,15 @@ void writeHistory(string username, string serverInfo, string userMessage) {
    }
 }
 
-// returns the name of the bot, called by lua
-int getBotName(lua_State *luaState) {
-  lua_pushstring(luaState, ircbotName.c_str());
-  return 1;
-}
-
-/* same as sendMessage but called by the Lua code
- * we need a new function because C++ functions must have a specific signature
- * if lua functions are to call them */
-int sendLuaMessage(lua_State *luaState) {
-  string msg = channelSendString;
-  lua_gettop(luaState);
-
-  // 1 is the first index of the array sent back (we only send one string to this function)
-  string messageOnly = lua_tostring(luaState, 1);
-  msg  += messageOnly;
-
-  // add carridge return and new line to the end of messages
-  msg += "\r\n";
-
-  // update the history file
-  writeHistory(ircbotName, "", messageOnly + "\r\n");
-
-  send(connectionSocket,msg.c_str(),msg.length(),0);
-  return 0;
-}
-
 // sends an outgoing message to the IRC server
-int sendMessage(string msg) {
+int IrcBot::sendMessage(string msg) {
   msg += "\r\n";
   // send the message to the server
   return send(connectionSocket,msg.c_str(),msg.length(),0);
 }
 
 // outputs a message to the irc channel
-int outputToUser(string username, string msg) {
+int IrcBot::outputToUser(string username, string msg) {
   cout << "Message going to user: " << msg << endl;
 
   /* put the lines to send in a vector, we might need it if we want to send
@@ -273,71 +245,28 @@ int outputToUser(string username, string msg) {
   }
 }
 
-// same as sendLuaMessage but for private messages
-int sendLuaPrivateMessage(lua_State *luaState) {
-  lua_gettop(luaState);
-  // first parameter: username, second parameter: message
-  outputToUser(lua_tostring(luaState, 1), lua_tostring(luaState, 2));
-  return 0;
-}
-
-/* same as sendMessage but called by the Lua code and sent to a user
- * if message was sent privately */
-int sendLuaMessageToSource(lua_State *luaState) {
-  string msg = channelSendString;
-  lua_gettop(luaState);
-
-  string username = lua_tostring(luaState, 1);
-
-  string messageOnly = lua_tostring(luaState, 2);
-  msg  += messageOnly;
-
-  bool isPrivateMessage = lua_toboolean(luaState, 3);
-
-  // add carridge return and new line to the end of messages
-  msg += "\r\n";
-
-  if (isPrivateMessage)
-    sendLuaPrivateMessage(luaState);
-  else {
-    // update the history file
-    writeHistory(ircbotName, "", messageOnly + "\r\n");
-    send(connectionSocket,msg.c_str(),msg.length(),0);
-  }
-  return 0;
+string IrcBot::getChannelSendString() {
+  return channelSendString;
 }
 
 // initialises the irc bot.
 void IrcBot::init(string channel, string password) {
 
+  // make directories that might not exist
+  runProcessWithReturn("mkdir -p history/");
+  runProcessWithReturn("touch plugin-data.sav");
+
   channelSendString = "PRIVMSG "+channel+" :";
   channelName = channel;
-
-  // load the plugin system
-  this->luaState = luaL_newstate();
-  luaL_openlibs(luaState);
-  lua_register(luaState, "sendLuaMessage", sendLuaMessage);
-  lua_register(luaState, "sendLuaMessageToSource", sendLuaMessageToSource);
-  lua_register(luaState, "getBotName", getBotName);
-  lua_register(luaState, "sendLuaPrivateMessage", sendLuaPrivateMessage);
-  std::cerr << "-- Loading plugin: " << "lua/loader.lua" << std::endl;
-  int status = luaL_loadfile(luaState, "lua/loader.lua");
-
-  // check if there was an error loading the plugin loader
-  if (status) {
-    std::cerr << "-- error: " << lua_tostring(luaState, -1) << std::endl;
-    lua_pop(luaState, 1); // remove error message
-  }
-
-  // run pcall to set up the state
-  lua_pcall(luaState, 0, 0, 0);
-
 
   // initialise connections to the IRC server
   struct addrinfo hints, *serverInfo;
   memset(&hints, 0, sizeof hints);
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
+
+  luaInterface = LuaInterface();
+  luaInterface.initState(this);
 
   cout << "connecting to server..." << endl;
 
@@ -351,6 +280,8 @@ void IrcBot::init(string channel, string password) {
     cout << "Error with initialising the socket. Exiting.";
     return;
   }
+
+  // this->connectionSocket = connectionSocket;
 
   // connect to the server
   if (connect(connectionSocket,serverInfo->ai_addr, serverInfo->ai_addrlen) < 0) {
@@ -474,32 +405,6 @@ void IrcBot::sendPong(string buf) {
   string reply = pongMessage.append(buf.substr(positionFound+pongMessage.size(), buf.length()));
   cout << "sending message: " << reply << "\n" << endl;
   sendMessage(reply);
-}
-
-void IrcBot::saveData() {
-    // get ready to call the "main" function
-    lua_getglobal(luaState, "savePluginData");
-
-    // call the global function that's been assigned (0 denotes the number of parameters)
-    int errors = lua_pcall(luaState, 0, 0, 0);
-
-    if ( errors!=0 ) {
-      std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;
-      lua_pop(luaState, 1); // remove error message
-    }
-}
-
-void IrcBot::loadData() {
-    // get ready to call the "main" function
-    lua_getglobal(luaState, "loadPluginData");
-
-    // call the global function that's been assigned (0 denotes the number of parameters)
-    int errors = lua_pcall(luaState, 0, 0, 0);
-
-    if ( errors!=0 ) {
-      std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;
-      lua_pop(luaState, 1); // remove error message
-    }
 }
 
 // returns the username of the full server message
@@ -678,6 +583,7 @@ int IrcBot::parseMessage(string str) {
 		 "\"give op status\". Gives op status (must be sadger, simown, or jpirie)\n"
 		 "\"take op status\". Take op status away (must be sadger, simown, or jpirie)\n"
 		 "\"update repo\". Updates the repository I sit in by pulling from the public http link.\n"
+		 "\"set topic <topic>\". Sets the topic to <topic>.\n"
 		 "\"save data\". Saves data of all "+ircbotName+" plugins.\n"
 		 "\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(\n"
 		 "\"history <start|stop>\". Starts/stops logging channel conversation.\n"
@@ -692,12 +598,12 @@ int IrcBot::parseMessage(string str) {
   }
   else if (stringSearch(userMessage, ircbotName+": save data")) {
     cout << "Saving all "+ircbotName+" data..." << endl;
-    saveData();
+    luaInterface.savePluginData();
     cout << "Saving all "+ircbotName+" data..." << endl;
   }
   else if (stringSearch(userMessage, ircbotName+": load data")) {
     cout << "Loading all "+ircbotName+" data..." << endl;
-    loadData();
+    luaInterface.loadPluginData();
     cout << "done!..." << endl;
   }
   else if (stringSearch(userMessage, ircbotName+": give history")) {
@@ -870,110 +776,7 @@ int IrcBot::parseMessage(string str) {
    * up in infinite loops (probably get caught sending messages to the server, which it
    * sends back with an error message, which we then send back for whatever reason) */
   if (connected) {
-    /* we need to find out which lua files have changed since we last
-     * ran them so that we don't have to relead the files again */
-
-    // run a command to get all the lua files in the plugins folder
-    string luaFilesCommand = "find lua/plugins -name \"*.lua\"";
-    string luaFiles = runProcessWithReturn(luaFilesCommand.c_str());
-
-    std::istringstream stream(luaFiles);
-    std::string line;
-    map<string,string>::iterator iter;
-
-
-    // a vector to hold the list of plugins that have been updated
-    vector<string> updatedFiles;
-
-    // a vector to hold the list of plugins that have been deleted
-    vector<string> deletedFiles;
-    for (iter=luaFileHashes.begin(); iter!=luaFileHashes.end(); ++iter)
-      deletedFiles.push_back(iter->first);
-
-    // loop through all the plugins found
-    while(std::getline(stream, line)) {
-      // this file exists, removed it from the deletedFiles vector
-      vector<string>::iterator vectorIter = find(deletedFiles.begin(), deletedFiles.end(), line);
-      if (vectorIter != deletedFiles.end())
-	deletedFiles.erase(vectorIter);
-
-      // get the hash of the current file we are processing
-      string sumOfFileCommand = "md5sum ";
-      sumOfFileCommand += line;
-      sumOfFileCommand += " | awk '{print $1}'";
-      string sumOfFile = runProcessWithReturn(sumOfFileCommand.c_str());
-
-      // get the existing hash we already have of the file we are processing
-      iter = luaFileHashes.find(line);
-
-      if (iter != luaFileHashes.end()) {
-	//we found a hash, compare it to the newly generated hash and see if they are the same
-	if (sumOfFile.compare((*iter).second) != 0) {
-	  cout << "File change detected in file: " << line << ". Replacing hash." << endl;
-	  luaFileHashes[line] = sumOfFile;
-	  updatedFiles.push_back(line);
-	}
-      }
-      else {
-	// we didn't have an existing hash, this is a new plugin
-	cout << "New plugin detected: " << line << endl;
-	luaFileHashes[line] = sumOfFile;
-	updatedFiles.push_back(line);
-      }
-    }
-
-    // get ready to call the "main" function
-    lua_getglobal(luaState, "main");
-
-    lua_pushstring(luaState, username.c_str());   // parameter one: the user's name who may be talking
-    lua_pushstring(luaState, serverInfo.c_str()); // parameter two: the server part of the message
-    lua_pushstring(luaState, userMessage.c_str()); // parameter three: the user message
-    lua_pushboolean(luaState, isPrivateMessage); // parameter four: whether the message is privately sent
-
-    // parameter five: give new table for storing the updated files list
-    lua_createtable(luaState, updatedFiles.size(), 0);
-    int newTable = lua_gettop(luaState);
-    int index = 1;
-    for(vector<string>::iterator iter = updatedFiles.begin(); iter != updatedFiles.end(); ++iter) {
-      // push the updated file's path onto the table
-      lua_pushstring(luaState, (*iter).c_str());
-      lua_rawseti(luaState, newTable, index);
-      index++;
-    }
-
-    // parameter six: a new table for storing the plugins that have been deleted
-    lua_createtable(luaState, deletedFiles.size(), 0);
-    int deletedFilesTable = lua_gettop(luaState);
-    index = 1;
-    for(vector<string>::iterator iter = deletedFiles.begin(); iter != deletedFiles.end(); ++iter) {
-      // the plugin has been deleted, remove it from the luaFileHashes map
-      map<string,string>::iterator deletedIter = luaFileHashes.find((*iter));
-      if (deletedIter != luaFileHashes.end())
-      	luaFileHashes.erase(deletedIter);
-      else
-      	cout << "Something has gone wrong! The user has deleted a plugin that we didn't even know existed!" << endl;
-
-      cout << "Deleted plugin file detected: " << (*iter) << endl;
-      // push the updated file's path onto the table
-      lua_pushstring(luaState, (*iter).c_str());
-      lua_rawseti(luaState, deletedFilesTable, index);
-      index++;
-    }
-
-
-    // call the global function that's been assigned (5 denotes the number of parameters)
-    int errors = lua_pcall(luaState, 6, 0, 0);
-
-    if (firstPluginLoad) {
-      loadData();
-      firstPluginLoad = false;
-    }
-
-    if ( errors!=0 ) {
-      std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;
-      lua_pop(luaState, 1); // remove error message
-    }
-
+    luaInterface.runPlugins(username, serverInfo, userMessage, isPrivateMessage);
   }
 
   return SUCCESS;

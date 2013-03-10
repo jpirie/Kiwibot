@@ -34,18 +34,32 @@ public:
   IrcBot(std::string, std::string);
   virtual ~IrcBot();
 
+  void writeHistory(std::string,std::string,std::string);
+
   bool setup;
   int outputToChannel(std::string);
+  std::string runProcessWithReturn(const char*);
   int outputToSource(std::string, std::string, bool);
+
+  std::string getChannelSendString();
 
   void init(std::string, std:: string);
 
+  std::string getNick();
+
   int mainLoop();
 
+  int connectionSocket;
+  int outputToUser(std::string, std::string);
+
  private:
-  std::map<std::string, std::string> luaFileHashes;
 
   std::string message;
+
+  int sendMessage(std::string);
+
+  std::string createTempFile();
+
   char *port;
 
   lua_State *luaState;
@@ -58,8 +72,6 @@ public:
   int joeStatus;
 
   std::string checkServerMessages (char*, size_t);
-  void saveData();
-  void loadData();
 
   char * timeNow();
 
