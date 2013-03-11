@@ -1,5 +1,4 @@
 /*********************************************************************
- * Copyright 2012 2013 William Gatens
  * Copyright 2012 2013 John Pirie
  *
  * Kiwibot is a free software: you can redistribute it and/or modify
@@ -17,38 +16,17 @@
  *
  ********************************************************************/
 
-#ifndef LUA_INTERFACE_H
-#define LUA_INTERFACE_H
+#ifndef SYSTEM_UTILS_H_
+#define SYSTEM_UTILS_H_
 
-#include "ircbot.h"
-#include "system-utils.h"
+#include <iostream>
+#include <string>
 
-// headers for lua
-extern "C" {
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
-}
-
-class LuaInterface {
- private:
-  std::map<std::string, std::string> luaFileHashes;
-  static IrcBot* ircbot;
-  static SystemUtils* systemUtils;
-  static int sendLuaMessage(lua_State*);
-  static int sendLuaMessageToSource(lua_State*);
-  static int getBotName(lua_State*);
-  static int sendLuaPrivateMessage(lua_State*);
-
- public:
-  LuaInterface();
-  lua_State *luaState;
-  void initState(IrcBot*);
-  void savePluginData();
-  void loadPluginData();
-  void closeState();
-  void runPlugins(std::string,std::string,std::string,bool);
-  lua_State* getState();
+class SystemUtils {
+public:
+  SystemUtils();
+  std::string createTempFile();
+  std::string runProcessWithReturn(const char*);
 };
 
-#endif /* LUA_INTERFACE_H_ */
+#endif /* SYSTEM_UTILS_H_ */

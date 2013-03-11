@@ -38,7 +38,6 @@ public:
 
   bool setup;
   int outputToChannel(std::string);
-  std::string runProcessWithReturn(const char*);
   int outputToSource(std::string, std::string, bool);
 
   std::string getChannelSendString();
@@ -57,8 +56,6 @@ public:
   std::string message;
 
   int sendMessage(std::string);
-
-  std::string createTempFile();
 
   char *port;
 

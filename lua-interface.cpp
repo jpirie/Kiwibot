@@ -34,6 +34,7 @@ using namespace std;
 bool firstPluginLoad = true;
 
 IrcBot* LuaInterface::ircbot;
+SystemUtils* LuaInterface::systemUtils;
 
 /* same as sendMessage but called by the Lua code
  * we need a new function because C++ functions must have a specific signature
@@ -111,7 +112,7 @@ void LuaInterface::runPlugins(string username, string serverInfo, string userMes
 
     // run a command to get all the lua files in the plugins folder
     string luaFilesCommand = "find lua/plugins -name \"*.lua\"";
-    string luaFiles = (*ircbot).runProcessWithReturn(luaFilesCommand.c_str());
+    string luaFiles = (*systemUtils).runProcessWithReturn(luaFilesCommand.c_str());
 
     std::istringstream stream(luaFiles);
     std::string line;
@@ -137,7 +138,7 @@ void LuaInterface::runPlugins(string username, string serverInfo, string userMes
       string sumOfFileCommand = "md5sum ";
       sumOfFileCommand += line;
       sumOfFileCommand += " | awk '{print $1}'";
-      string sumOfFile = (*ircbot).runProcessWithReturn(sumOfFileCommand.c_str());
+      string sumOfFile = (*systemUtils).runProcessWithReturn(sumOfFileCommand.c_str());
 
       // get the existing hash we already have of the file we are processing
       iter = luaFileHashes.find(line);

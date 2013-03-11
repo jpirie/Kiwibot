@@ -1,5 +1,4 @@
 /*********************************************************************
- * Copyright 2012 2013 William Gatens
  * Copyright 2012 2013 John Pirie
  *
  * Kiwibot is a free software: you can redistribute it and/or modify
@@ -15,40 +14,35 @@
  * You should have received a copy of the GNU General Public License
  * along with Kiwibot.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * Description: A class allowing us to run system commands (creating
+ *              temp files, running processing, etc.)
  ********************************************************************/
 
-#ifndef LUA_INTERFACE_H
-#define LUA_INTERFACE_H
+#include <iostream>
+#include <string>
+#include <stdio.h>
 
-#include "ircbot.h"
 #include "system-utils.h"
 
-// headers for lua
-extern "C" {
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
+using namespace std;
+
+SystemUtils::SystemUtils() {}
+
+std::string SystemUtils::runProcessWithReturn(const char* cmd) {
+    FILE* pipe = popen(cmd, "r");
+    if (!pipe)
+      return "an error occurred";
+
+    char buffer[256];
+    string stdout = "";
+    while(!feof(pipe)) {
+        if(fgets(buffer, 128, pipe) != NULL)
+                stdout += buffer;
+    }
+    pclose(pipe);
+    return stdout;
 }
 
-class LuaInterface {
- private:
-  std::map<std::string, std::string> luaFileHashes;
-  static IrcBot* ircbot;
-  static SystemUtils* systemUtils;
-  static int sendLuaMessage(lua_State*);
-  static int sendLuaMessageToSource(lua_State*);
-  static int getBotName(lua_State*);
-  static int sendLuaPrivateMessage(lua_State*);
-
- public:
-  LuaInterface();
-  lua_State *luaState;
-  void initState(IrcBot*);
-  void savePluginData();
-  void loadPluginData();
-  void closeState();
-  void runPlugins(std::string,std::string,std::string,bool);
-  lua_State* getState();
-};
-
-#endif /* LUA_INTERFACE_H_ */
+std::string SystemUtils::createTempFile() {
+  return runProcessWithReturn("mktemp");
+}

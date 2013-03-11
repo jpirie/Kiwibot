@@ -36,6 +36,7 @@
 
 #include "lua-interface.h"
 #include "timer.h"
+#include "system-utils.h"
 #include "ircbot.h"
 
 // headers for lua
@@ -60,6 +61,7 @@ vector<string> connectedUsernames;
 vector<string> authenticatedUsernames;
 
 LuaInterface luaInterface;
+SystemUtils systemUtils;
 
 /* this needs to be a global variable because of a funky issue with the fact
    that C++ functions need specific signatures for lua to call them */
@@ -98,25 +100,6 @@ IrcBot::IrcBot(string nick, string user) {
 IrcBot::~IrcBot() {
   luaInterface.closeState();
   close (connectionSocket); // close the socket
-}
-
-std::string IrcBot::runProcessWithReturn(const char* cmd) {
-    FILE* pipe = popen(cmd, "r");
-    if (!pipe)
-      return "an error occurred";
-
-    char buffer[256];
-    string stdout = "";
-    while(!feof(pipe)) {
-        if(fgets(buffer, 128, pipe) != NULL)
-                stdout += buffer;
-    }
-    pclose(pipe);
-    return stdout;
-}
-
-std::string IrcBot::createTempFile() {
-  return runProcessWithReturn("mktemp");
 }
 
 // searches for a string in another given string
@@ -253,8 +236,8 @@ string IrcBot::getChannelSendString() {
 void IrcBot::init(string channel, string password) {
 
   // make directories that might not exist
-  runProcessWithReturn("mkdir -p history/");
-  runProcessWithReturn("touch plugin-data.sav");
+  systemUtils.runProcessWithReturn("mkdir -p history/");
+  systemUtils.runProcessWithReturn("touch plugin-data.sav");
 
   channelSendString = "PRIVMSG "+channel+" :";
   channelName = channel;
@@ -267,6 +250,8 @@ void IrcBot::init(string channel, string password) {
 
   luaInterface = LuaInterface();
   luaInterface.initState(this);
+
+  systemUtils = SystemUtils();
 
   cout << "connecting to server..." << endl;
 
@@ -610,7 +595,7 @@ int IrcBot::parseMessage(string str) {
     if (username == "sadger" || username == "jpirie" || username == "simown") {
       if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
 	string historyCommand = "tar -czf kiwi-history.tar.gz history/; mv kiwi-history.tar.gz ~/public_html/";
-	runProcessWithReturn(historyCommand.c_str());
+	systemUtils.runProcessWithReturn(historyCommand.c_str());
 	outputToUser(username, "Latest history tarball available at http://www.macs.hw.ac.uk/~jp95/kiwi-history.tar.gz.");
       }
       else
@@ -639,15 +624,15 @@ int IrcBot::parseMessage(string str) {
     if (username == "sadger" || username == "jpirie" || username == "simown") {
       if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
 	// we remove three at the end to remove the newline character
-	string tempFile = createTempFile();
+	string tempFile = systemUtils.createTempFile();
 	string userString = userMessage.substr(x + searchHistory.length(), userMessage.length()-searchHistory.length()-3);
 	// show no other searches through history in the output, this likely isn't useful
 	string targetString = "grep -i \""+userString+"\" history/*.log | grep -v \"search history\" | sort -r > "+tempFile;
 	cout << "running shell command: " << targetString << endl;
-	runProcessWithReturn(targetString.c_str());
+	systemUtils.runProcessWithReturn(targetString.c_str());
 	string toPastebinString = "curl -s -S --data-urlencode \"txt=`cat "+tempFile+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
 	cout << "running shell command: " << toPastebinString << endl;
-	string pastebinLink = runProcessWithReturn(toPastebinString.c_str());
+	string pastebinLink = systemUtils.runProcessWithReturn(toPastebinString.c_str());
 
 	outputToUser(username, "Search results available at the following link: "+pastebinLink);
       }
@@ -666,11 +651,11 @@ int IrcBot::parseMessage(string str) {
         /* first check the file exsits
 	 * don't want to bring in boost just for this, so running a shell command to check */
 	string checkFileExists = "if [ -f history/"+userString+" ]; then echo \"yes\"; else echo \"no\"; fi";
-	string results = runProcessWithReturn(checkFileExists.c_str());
+	string results = systemUtils.runProcessWithReturn(checkFileExists.c_str());
 	if (stringSearch(results, "yes")) {
 	  string targetString = "curl -s -S --data-urlencode \"txt=`cat history/"+userString+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
 	  cout << "running shell command: " << targetString << endl;
-	  string results = runProcessWithReturn(targetString.c_str());
+	  string results = systemUtils.runProcessWithReturn(targetString.c_str());
 	  outputToUser(username, "History file available at: "+results);
 	}
 	else
@@ -686,7 +671,7 @@ int IrcBot::parseMessage(string str) {
     if (username == "sadger" || username == "jpirie" || username == "simown") {
       if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
 	string historyCommand = "rm ~/public_html/kiwi-history.tar.gz";
-	runProcessWithReturn(historyCommand.c_str());
+	systemUtils.runProcessWithReturn(historyCommand.c_str());
 	outputToUser(username, "Tarball deleted.");
       }
       else
