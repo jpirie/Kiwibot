@@ -78,7 +78,8 @@ int SHUTDOWN  = 2;     // shutdown the bot
 // maximum lines to send to the user at any one time
 int MAX_LINES_OUTPUT = 5;
 
-Timer timer;
+Timer pingTimer;    // this perhaps shouldn't be done this way, rather check for 0 return on recv call for disconnections
+Timer uptimeTimer;
 
 // holds information for private messaging to users (e.g. history searching)
 struct userTextManagement {
@@ -297,8 +298,9 @@ void IrcBot::init(string channel, string password) {
 
   checkAndParseMessages();
 
-  /* we're now on the channel, start the timer */
-  timer.start();
+  /* we're now on the channel, start the pingTimer */
+  pingTimer.start();
+  uptimeTimer.start();
 }
 
 /* checks for any messages from the server, and parses any that it finds. It
@@ -311,23 +313,23 @@ int IrcBot::checkAndParseMessages() {
   message=checkServerMessages(buffer, sizeof(buffer));
 
   if (connected)
-    cout << "At beginning of checkAndParseMessages. Timer is currently at " << timer.elapsedTime() << endl;
+    cout << "At beginning of checkAndParseMessages. PingTimer is currently at " << pingTimer.elapsedTime() << endl;
 
   // check for ping messages
   if (stringSearch(message,"PING ")) {
     sendPong(message);
-    timer.start();
+    pingTimer.start();
   }
   else if (message != "") {
     botStatus = parseMessage(message);
-    timer.start();
+    pingTimer.start();
   }
 
   if (connected) {
-    cout << "At end of checkAndParseMessages. Timer (possibly-reset) is at " << timer.elapsedTime() << endl;
+    cout << "At end of checkAndParseMessages. PingTimer (possibly-reset) is at " << pingTimer.elapsedTime() << endl;
 
     // if we think we have been disconnected
-    if (timer.elapsedTime() > 300)
+    if (pingTimer.elapsedTime() > 300)
       botStatus = DISCONNECTED; // restart the bot
   }
 
@@ -561,6 +563,8 @@ int IrcBot::parseMessage(string str) {
   if (stringSearch(userMessage, ircbotName+": help")) {
     outputToUser(username, "I have all kinds of fun features! Syntax: \""+ircbotName+": <command>\" on the following commands:\n"
 		 "\"check authentication\". Checks user access information via NickServ.\n"
+		 "\"set topic <topic>\". Sets the topic to <topic>.\n"
+		 "\"uptime\". Displays uptime.\n"
 		 "\"give history\". Creates tarball of history and puts link on web. (Must be simown, sadger, or jpirie)\n"
 		 "\"search history <string>\". Searches history. (Must be simown, sadger, or jpirie)\n"
 		 "\"view history <log name>\". Displays history file. (Must be simown, sadger, or jpirie)\n"
@@ -568,7 +572,6 @@ int IrcBot::parseMessage(string str) {
 		 "\"give op status\". Gives op status (must be sadger, simown, or jpirie)\n"
 		 "\"take op status\". Take op status away (must be sadger, simown, or jpirie)\n"
 		 "\"update repo\". Updates the repository I sit in by pulling from the public http link.\n"
-		 "\"set topic <topic>\". Sets the topic to <topic>.\n"
 		 "\"save data\". Saves data of all "+ircbotName+" plugins.\n"
 		 "\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(\n"
 		 "\"history <start|stop>\". Starts/stops logging channel conversation.\n"
@@ -580,6 +583,36 @@ int IrcBot::parseMessage(string str) {
     system("cd ~/repos/kiwibot; git pull http master; git pull http dynamic-plugins");
     cout << "done updating repository." << endl;
     outputToSource("All done boss! <3", username, isPrivateMessage);
+  }
+  else if (stringSearch(userMessage, ircbotName+": uptime")) {
+    int uptime = uptimeTimer.elapsedTime();
+    int days = uptime / 60 / 60 / 24;
+    int hours = (uptime / 60 / 60) % 24;
+    int minutes = (uptime / 60) % 60;
+    int seconds = uptime % 60;
+    std::stringstream ss;
+    ss << "I have been alive for ";
+    ss << days;
+    if (days == 1)
+      ss << " day, ";
+    else
+      ss << " days, ";
+    ss << hours;
+    if (hours == 1)
+      ss << " hour, ";
+    else
+      ss << " hours, ";
+    ss << minutes;
+    if (minutes == 1)
+      ss << " minute, and ";
+    else
+      ss << " minutes, and ";
+    ss << seconds;
+    if (seconds == 1)
+    ss << " second.";
+    else
+      ss << " seconds.";
+    outputToSource(ss.str(), username, isPrivateMessage);
   }
   else if (stringSearch(userMessage, ircbotName+": save data")) {
     cout << "Saving all "+ircbotName+" data..." << endl;
@@ -756,10 +789,7 @@ int IrcBot::parseMessage(string str) {
     cout << "New authenticated username: '" << newAuthenticatedMember << "'" << endl;
   }
 
-  /* it is important to check that we are passed all the initial server messages!
-   * if we send some messages in the middle of the process of this, we seem to end
-   * up in infinite loops (probably get caught sending messages to the server, which it
-   * sends back with an error message, which we then send back for whatever reason) */
+  /* once the connection has been established, we can run the lua plugins */
   if (connected) {
     luaInterface.runPlugins(username, serverInfo, userMessage, isPrivateMessage);
   }

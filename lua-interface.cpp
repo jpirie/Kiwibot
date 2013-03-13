@@ -64,6 +64,11 @@ int LuaInterface::getBotName(lua_State *luaState) {
   return 1;
 }
 
+// returns a list of authenticated usernames
+int LuaInterface::getAuthenticatedUsernames(lua_State *luaState) {
+  return 1;
+}
+
 // same as sendLuaMessage but for private messages
 int LuaInterface::sendLuaPrivateMessage(lua_State *luaState) {
   lua_gettop(luaState);
