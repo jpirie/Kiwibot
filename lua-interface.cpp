@@ -40,8 +40,8 @@ SystemUtils* LuaInterface::systemUtils;
  * we need a new function because C++ functions must have a specific signature
  * if lua functions are to call them */
 int LuaInterface::sendLuaMessage(lua_State *luaState) {
-  IrcBot thisIrcBot = (*ircbot);
-  string msg = (thisIrcBot).getChannelSendString();
+  cout << "HERE!" << endl;
+  string msg = (*ircbot).getChannelSendString();
   lua_gettop(luaState);
 
   // 1 is the first index of the array sent back (we only send one string to this function)
@@ -52,9 +52,9 @@ int LuaInterface::sendLuaMessage(lua_State *luaState) {
   msg += "\r\n";
 
   // update the history file
-  (thisIrcBot).writeHistory((thisIrcBot).getNick(), "", messageOnly + "\r\n");
+  (*ircbot).writeHistory((*ircbot).getNick(), "", messageOnly + "\r\n");
 
-  send((thisIrcBot).connectionSocket,msg.c_str(),msg.length(),0);
+  send((*ircbot).connectionSocket,msg.c_str(),msg.length(),0);
   return 0;
 }
 
