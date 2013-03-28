@@ -45,17 +45,17 @@ int main(int argc, char* argv[]) {
     std::string arg = argv[argumentCounter];
 
     // check arguments
-    if (arg == "-p" || arg == "--password") {
+    if (!arg.compare("-p") || !arg.compare("--password")) {
       if (argv[argumentCounter+1]) {
 	password = argv[argumentCounter+1];
-	argumentCounter += 2;
+	argumentCounter+=2;
       }
       else {
 	cout << "Password argument requires a parameter" << endl;
 	return 1;
       }
     }
-    if (arg == "-c" || arg == "--channel") {
+    else if (arg == "-c" || arg == "--channel") {
       if (argv[argumentCounter+1]) {
 	channel = argv[argumentCounter+1];
 	argumentCounter += 2;
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
 	return 1;
       }
     }
-    if (arg == "-n" || arg == "--nick") {
+    else if (arg == "-n" || arg == "--nick") {
       if (argv[argumentCounter+1]) {
 	nick = argv[argumentCounter+1];
 	argumentCounter += 2;
@@ -87,6 +87,11 @@ int main(int argc, char* argv[]) {
       cout << "\t-n | --nick <nickname>: Sets the nickname to <nickname>" << endl;
       cout << "\t-d | --debug: Kiwi joins channel '#caffeine-addicts-test' and has nick 'kiwitest'" << endl;
       cout << "\t-h | --help: Displays this help text" << endl;
+      argumentCounter++;
+      connect = false;
+    }
+    else {
+      cout << "Unrecognised argument: " << arg << endl;
       argumentCounter++;
       connect = false;
     }
