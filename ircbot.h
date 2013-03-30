@@ -53,6 +53,14 @@ public:
 
  private:
 
+  struct adminCommand {
+    std::string command;
+    std::string userMessage;
+    bool isPrivateMessage;
+  };
+
+  std::map<std::string, adminCommand> adminCommandsUsed;
+
   std::string message;
 
   int sendMessage(std::string);
@@ -75,6 +83,7 @@ public:
   void sendPong(std::string buf);
 
   int parseMessage(std::string buf);
+  void runAdminCommand(std::string, adminCommand);
   void parsePrivateMessage(std::string buf);
   int checkAndParseMessages ();
 

@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
 	return 1;
       }
     }
-    else if (arg == "-c" || arg == "--channel") {
+    else if (!arg.compare("-c") || !arg.compare("--channel")) {
       if (argv[argumentCounter+1]) {
 	channel = argv[argumentCounter+1];
 	argumentCounter += 2;
@@ -65,7 +65,7 @@ int main(int argc, char* argv[]) {
 	return 1;
       }
     }
-    else if (arg == "-n" || arg == "--nick") {
+    else if (!arg.compare("-n") || !arg.compare("--nick")) {
       if (argv[argumentCounter+1]) {
 	nick = argv[argumentCounter+1];
 	argumentCounter += 2;
@@ -75,12 +75,12 @@ int main(int argc, char* argv[]) {
 	return 1;
       }
     }
-    else if (arg == "-d" || arg == "--debug") {
+    else if (!arg.compare("-d") || !arg.compare("--debug")) {
       nick = "kiwitest";
       channel = "#caffeine-addicts-test";
       argumentCounter ++;
     }
-    else if (arg == "--help" || arg == "-?" || arg == "-h") {
+    else if (!arg.compare("--help") || !arg.compare("-?") || !arg.compare("-h")) {
       cout << "Arguments list:" << endl;
       cout << "\t-p | --password <password>: Sets the password" << endl;
       cout << "\t-c | --channel <room name>: Sets the room channel name to " << endl;
@@ -91,7 +91,7 @@ int main(int argc, char* argv[]) {
       connect = false;
     }
     else {
-      cout << "Unrecognised argument: " << arg << endl;
+      cout << "Unrecognised argument: " << arg << ". Use argument -h to see a list of valid arguments." << endl;
       argumentCounter++;
       connect = false;
     }

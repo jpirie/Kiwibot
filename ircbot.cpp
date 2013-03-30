@@ -197,7 +197,7 @@ int IrcBot::sendMessage(string msg) {
 
 // outputs a message to the irc channel
 int IrcBot::outputToUser(string username, string msg) {
-  cout << "Message going to user: " << msg << endl;
+  cout << "Message going to " << username << ": " << msg << endl;
 
   /* put the lines to send in a vector, we might need it if we want to send
    * the user a lot of information */
@@ -495,6 +495,99 @@ void IrcBot::parsePrivateMessage(string str) {
 
 }
 
+void IrcBot::runAdminCommand(string username, adminCommand thisCommand) {
+
+  string searchHistory = ": search history";
+  string viewHistory = ": view history";
+  string setTopic = ": set topic";
+
+  if (username == "sadger" || username == "jpirie" || username == "simown") {
+    if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
+      if (thisCommand.command == ": give op status")
+	sendMessage("MODE "+channelName+" +o "+username);
+      else if (thisCommand.command == ": take op status")
+	sendMessage("MODE "+channelName+" -o "+username);
+      else if (thisCommand.command == setTopic) {
+	int x = stringSearch(thisCommand.userMessage, setTopic);
+	// we remove three at the end to remove the newline character
+	string userString = thisCommand.userMessage.substr(x + setTopic.length(), thisCommand.userMessage.length()-setTopic.length()-3);
+	string sendString = "TOPIC "+channelName+" "+userString;
+	cout << "Sending string: " << sendString << endl;
+	//	sendMessage(sendString);
+	outputToUser("ChanServ", sendString);
+      }
+      else if (thisCommand.command == ": give history") {
+	string historyCommand = "tar -czf kiwi-history.tar.gz history/; mv kiwi-history.tar.gz ~/public_html/";
+	systemUtils.runProcessWithReturn(historyCommand.c_str());
+	outputToUser(username, "Latest history tarball available at http://www.macs.hw.ac.uk/~jp95/kiwi-history.tar.gz.");
+      }
+      else if (thisCommand.command == searchHistory) {
+	int x = stringSearch(thisCommand.userMessage, searchHistory);
+	// we remove three at the end to remove the newline character
+	string tempFile = systemUtils.createTempFile();
+	string userString = thisCommand.userMessage.substr(x + searchHistory.length(), thisCommand.userMessage.length()-searchHistory.length()-3);
+	// show no other searches through history in the output, this likely isn't useful
+	string targetString = "grep -i \""+userString+"\" history/*.log | grep -v \"search history\" | sort -r > "+tempFile;
+	cout << "running shell command: " << targetString << endl;
+	systemUtils.runProcessWithReturn(targetString.c_str());
+	string toPastebinString = "curl -s -S --data-urlencode \"txt=`cat "+tempFile+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
+	cout << "running shell command: " << toPastebinString << endl;
+	string pastebinLink = systemUtils.runProcessWithReturn(toPastebinString.c_str());
+	outputToUser(username, "Search results available at the following link: "+pastebinLink);
+      }
+      else if (thisCommand.command == viewHistory) {
+	int x = stringSearch(thisCommand.userMessage, viewHistory);
+	// we remove three at the end to remove the newline character
+	string userString = thisCommand.userMessage.substr(x + viewHistory.length(), thisCommand.userMessage.length()-viewHistory.length()-3);
+
+	/* first check the file exsits
+	 * don't want to bring in boost just for this, so running a shell command to check */
+	string checkFileExists = "if [ -f history/"+userString+" ]; then echo \"yes\"; else echo \"no\"; fi";
+	string results = systemUtils.runProcessWithReturn(checkFileExists.c_str());
+	if (stringSearch(results, "yes")) {
+	  string targetString = "curl -s -S --data-urlencode \"txt=`cat history/"+userString+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
+	  cout << "running shell command: " << targetString << endl;
+	  string results = systemUtils.runProcessWithReturn(targetString.c_str());
+	  outputToUser(username, "History file available at: "+results);
+	}
+	else
+	  outputToUser(username, "History file '"+userString+"' does not exist!");
+      }
+      else if (thisCommand.command == ": hide history") {
+	string historyCommand = "rm ~/public_html/kiwi-history.tar.gz";
+	systemUtils.runProcessWithReturn(historyCommand.c_str());
+	outputToUser(username, "Tarball deleted.");
+      }
+      else if (thisCommand.command == ": update repo") {
+	cout << "Updating repository..." << endl;
+	outputToSource("Update the repo? Sure thing!", username, thisCommand.isPrivateMessage);
+	system("cd ~/repos/kiwibot; git pull http master; git pull http dynamic-plugins");
+	cout << "done updating repository." << endl;
+	outputToSource("All done boss! <3", username, thisCommand.isPrivateMessage);
+      }
+      else if (thisCommand.command == ": save data") {
+	cout << "Saving all "+ircbotName+" data..." << endl;
+	luaInterface.savePluginData();
+	cout << "Saving all "+ircbotName+" data..." << endl;
+      }
+      else if (thisCommand.command == ": load data") {
+	cout << "Loading all "+ircbotName+" data..." << endl;
+	luaInterface.loadPluginData();
+	cout << "done!..." << endl;
+      }
+      else
+	outputToUser(username, "Unknown command.");
+    }
+    else {
+      string checkAccess = "PRIVMSG NickServ : ACC " + username;
+      sendMessage(checkAccess);
+      adminCommandsUsed[username] = thisCommand;
+    }
+  }
+  else
+    outputToUser(username, "You are not recognised as a kiwibot administrator.");
+}
+
 /* the function which parses the messages that the user sends
  * this should really be in its own file
  */
@@ -505,9 +598,9 @@ int IrcBot::parseMessage(string str) {
   string userMessage = getUserMessage(str);
   bool isPrivateMessage = false;
 
-  string searchHistory = ircbotName+": search history";
-  string viewHistory = ircbotName+": view history";
-  string setTopic = ircbotName+": set topic";
+  adminCommand thisCommand;
+  thisCommand.userMessage = userMessage;
+  thisCommand.isPrivateMessage = isPrivateMessage;
 
   if (serverInfo.find("PRIVMSG "+ircbotName) != string::npos && connected) {
     // this is a private message to the irc bot
@@ -533,16 +626,6 @@ int IrcBot::parseMessage(string str) {
       getline( ss, x, ' ' );
       namesOfUsersConnected.push_back(x);
     }
-
-    for(vector<string>::iterator iter = namesOfUsersConnected.begin(); iter != namesOfUsersConnected.end(); ++iter) {
-      if (*iter != ircbotName) {
-	string adminSymbolRemoved = *iter;
-	if (adminSymbolRemoved.substr(0, 1) == "@")
-	  adminSymbolRemoved = adminSymbolRemoved.substr(1, adminSymbolRemoved.length());
-	  string checkAccess = "PRIVMSG NickServ : ACC " + adminSymbolRemoved;
-	  sendMessage(checkAccess);
-      }
-    }
   }
 
   if (serverInfo.find("JOIN") != string::npos) {
@@ -562,27 +645,19 @@ int IrcBot::parseMessage(string str) {
 
   if (stringSearch(userMessage, ircbotName+": help")) {
     outputToUser(username, "I have all kinds of fun features! Syntax: \""+ircbotName+": <command>\" on the following commands:\n"
-		 "\"check authentication\". Checks user access information via NickServ.\n"
 		 "\"set topic <topic>\". Sets the topic to <topic>.\n"
 		 "\"uptime\". Displays uptime.\n"
-		 "\"give history\". Creates tarball of history and puts link on web. (Must be simown, sadger, or jpirie)\n"
-		 "\"search history <string>\". Searches history. (Must be simown, sadger, or jpirie)\n"
-		 "\"view history <log name>\". Displays history file. (Must be simown, sadger, or jpirie)\n"
-		 "\"hide history\". Removes existing tarball of history on web (Must be simown, sadger, or jpirie)\n"
-		 "\"give op status\". Gives op status (must be sadger, simown, or jpirie)\n"
-		 "\"take op status\". Take op status away (must be sadger, simown, or jpirie)\n"
+		 "\"give history\". Creates tarball of history and puts link on web (must be kiwibot admin)\n"
+		 "\"search history <string>\". Searches history (must be kiwibot admin)\n"
+		 "\"view history <log name>\". Displays history file (must be kiwibot admin)\n"
+		 "\"hide history\". Removes existing tarball of history on web (must be kiwibot admin)\n"
+		 "\"give op status\". Gives op status (must be kiwibot admin)\n"
+		 "\"take op status\". Take op status away (must be kiwibot admin)\n"
 		 "\"update repo\". Updates the repository I sit in by pulling from the public http link.\n"
 		 "\"save data\". Saves data of all "+ircbotName+" plugins.\n"
 		 "\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(\n"
 		 "\"history <start|stop>\". Starts/stops logging channel conversation.\n"
 		 "\"plugin list\". Lists the current plugins and their activation status.");
-  }
-  else if (stringSearch(userMessage, ircbotName+": update repo")) {
-    cout << "Updating repository..." << endl;
-    outputToSource("Update the repo? Sure thing!", username, isPrivateMessage);
-    system("cd ~/repos/kiwibot; git pull http master; git pull http dynamic-plugins");
-    cout << "done updating repository." << endl;
-    outputToSource("All done boss! <3", username, isPrivateMessage);
   }
   else if (stringSearch(userMessage, ircbotName+": uptime")) {
     int uptime = uptimeTimer.elapsedTime();
@@ -614,127 +689,47 @@ int IrcBot::parseMessage(string str) {
       ss << " seconds.";
     outputToSource(ss.str(), username, isPrivateMessage);
   }
+
+  // admin commands
+  else if (stringSearch(userMessage, ircbotName+": update repo")) {
+    thisCommand.command = ": update repo";
+    runAdminCommand(username, thisCommand);
+  }
+  else if (stringSearch(userMessage, ircbotName+": set topic")) {
+    thisCommand.command = ": set topic";
+    runAdminCommand(username, thisCommand);
+  }
   else if (stringSearch(userMessage, ircbotName+": save data")) {
-    cout << "Saving all "+ircbotName+" data..." << endl;
-    luaInterface.savePluginData();
-    cout << "Saving all "+ircbotName+" data..." << endl;
+    thisCommand.command = ": save data";
+    runAdminCommand(username, thisCommand);
   }
-  else if (stringSearch(userMessage, ircbotName+": load data")) {
-    cout << "Loading all "+ircbotName+" data..." << endl;
-    luaInterface.loadPluginData();
-    cout << "done!..." << endl;
-  }
-  else if (stringSearch(userMessage, ircbotName+": give history")) {
-    if (username == "sadger" || username == "jpirie" || username == "simown") {
-      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
-	string historyCommand = "tar -czf kiwi-history.tar.gz history/; mv kiwi-history.tar.gz ~/public_html/";
-	systemUtils.runProcessWithReturn(historyCommand.c_str());
-	outputToUser(username, "Latest history tarball available at http://www.macs.hw.ac.uk/~jp95/kiwi-history.tar.gz.");
-      }
-      else
-	outputToUser(username, "You must be authenticated with NickServ to use this command.");
-    }
-    else
-      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
-  }
-  else if (int x = stringSearch(userMessage, setTopic)) {
-    if (username == "sadger" || username == "jpirie" || username == "simown") {
-      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
-	// we remove three at the end to remove the newline character
-	string userString = userMessage.substr(x + setTopic.length(), userMessage.length()-setTopic.length()-3);
-	string sendString = "TOPIC "+channelName+" "+userString;
-	cout << "Sending string: " << sendString << endl;
-	//	sendMessage(sendString);
-	outputToUser("ChanServ", sendString);
-      }
-      else
-	outputToUser(username, "You must be authenticated with NickServ to use this command.");
-    }
-    else
-      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
-  }
-  else if (int x = stringSearch(userMessage, searchHistory)) {
-    if (username == "sadger" || username == "jpirie" || username == "simown") {
-      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
-	// we remove three at the end to remove the newline character
-	string tempFile = systemUtils.createTempFile();
-	string userString = userMessage.substr(x + searchHistory.length(), userMessage.length()-searchHistory.length()-3);
-	// show no other searches through history in the output, this likely isn't useful
-	string targetString = "grep -i \""+userString+"\" history/*.log | grep -v \"search history\" | sort -r > "+tempFile;
-	cout << "running shell command: " << targetString << endl;
-	systemUtils.runProcessWithReturn(targetString.c_str());
-	string toPastebinString = "curl -s -S --data-urlencode \"txt=`cat "+tempFile+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
-	cout << "running shell command: " << toPastebinString << endl;
-	string pastebinLink = systemUtils.runProcessWithReturn(toPastebinString.c_str());
-
-	outputToUser(username, "Search results available at the following link: "+pastebinLink);
-      }
-      else
-	outputToUser(username, "You must be authenticated with NickServ to use this command.");
-    }
-    else
-      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
-  }
-  else if (int x = stringSearch(userMessage, viewHistory)) {
-    if (username == "sadger" || username == "jpirie" || username == "simown") {
-      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
-	// we remove three at the end to remove the newline character
-	string userString = userMessage.substr(x + viewHistory.length(), userMessage.length()-viewHistory.length()-3);
-
-        /* first check the file exsits
-	 * don't want to bring in boost just for this, so running a shell command to check */
-	string checkFileExists = "if [ -f history/"+userString+" ]; then echo \"yes\"; else echo \"no\"; fi";
-	string results = systemUtils.runProcessWithReturn(checkFileExists.c_str());
-	if (stringSearch(results, "yes")) {
-	  string targetString = "curl -s -S --data-urlencode \"txt=`cat history/"+userString+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
-	  cout << "running shell command: " << targetString << endl;
-	  string results = systemUtils.runProcessWithReturn(targetString.c_str());
-	  outputToUser(username, "History file available at: "+results);
-	}
-	else
-	  outputToUser(username, "History file '"+userString+"' does not exist!");
-      }
-      else
-	outputToUser(username, "You must be authenticated with NickServ to use this command.");
-    }
-    else
-      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
+  else if (stringSearch(userMessage, ircbotName+": search history")) {
+    thisCommand.command = ": search history";
+    runAdminCommand(username, thisCommand);
   }
   else if (stringSearch(userMessage, ircbotName+": hide history")) {
-    if (username == "sadger" || username == "jpirie" || username == "simown") {
-      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end()) {
-	string historyCommand = "rm ~/public_html/kiwi-history.tar.gz";
-	systemUtils.runProcessWithReturn(historyCommand.c_str());
-	outputToUser(username, "Tarball deleted.");
-      }
-      else
-	outputToUser(username, "You must be authenticated with NickServ to use this command.");
-    }
-    else
-      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
-
+    thisCommand.command = ": hide history";
+    runAdminCommand(username, thisCommand);
+  }
+  else if (stringSearch(userMessage, ircbotName+": view history")) {
+    thisCommand.command = ": view history";
+    runAdminCommand(username, thisCommand);
+  }
+  else if (stringSearch(userMessage, ircbotName+": load data")) {
+    thisCommand.command = ": load data";
+    runAdminCommand(username, thisCommand);
+  }
+  else if (stringSearch(userMessage, ircbotName+": give history")) {
+    thisCommand.command = ": give history";
+    runAdminCommand(username, thisCommand);
   }
   else if (stringSearch(userMessage, ircbotName+": give op status")) {
-    if (username == "sadger" || username == "jpirie" || username == "simown") {
-      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end())
-	sendMessage("MODE "+channelName+" +o "+username);
-      else
-	outputToUser(username, "You must be authenticated with NickServ to use this command.");
-    }
-    else
-      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
+    thisCommand.command = ": give op status";
+    runAdminCommand(username, thisCommand);
   }
   else if (stringSearch(userMessage, ircbotName+": take op status")) {
-    if (username == "sadger" || username == "jpirie" || username == "simown") {
-      if (find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username) != authenticatedUsernames.end())
-	sendMessage("MODE "+channelName+" -o "+username);
-      else
-	outputToUser(username, "You must be authenticated with NickServ to use this command.");
-    }
-    else
-      outputToUser(username, "Only sadger, jpirie, or simown can use this command.");
-
-
+    thisCommand.command = ": take op status";
+    runAdminCommand(username, thisCommand);
   }
   else if (stringSearch(userMessage, ircbotName+": shutdown")) {
     if (isPrivateMessage)
@@ -774,19 +769,30 @@ int IrcBot::parseMessage(string str) {
 	outputToChannel("My ears are already shut to your sneakiness. I'll keep it secret. I'll keep it safe.");
     }
   }
-  else if (stringSearch(userMessage, ircbotName+": check authentication")) {
-    outputToSource("I'll get on the dog and bone to NickServ straight away.", username, isPrivateMessage);
-    string checkAccess = "PRIVMSG NickServ : ACC " + username;
-    sendMessage(checkAccess);
-  }
   /* we check the whole string here (str) not the userMessage, because that's not set up
    * right for NickServ requests */
   else if (stringSearch(str, "ACC 3") && username == "NickServ") {
+      size_t separatingColon = str.substr(1, str.length()).find(":");
+      // we add two to nicknameStart becuase we ignore the starting colon in the message
+      string newAuthenticatedMember = str.substr(separatingColon+2, str.length()-str.find("ACC")-1);
+      if (newAuthenticatedMember == "sadger" || newAuthenticatedMember == "jpirie" || newAuthenticatedMember == "simown") {
+	authenticatedUsernames.push_back(newAuthenticatedMember);
+	// run any command that is current in the map
+	runAdminCommand(newAuthenticatedMember, adminCommandsUsed[newAuthenticatedMember]);
+	cout << "New authenticated username: '" << newAuthenticatedMember << "'" << endl;
+      }
+  }
+  /* all other types of nickserv access */
+  else if (stringSearch(str, "ACC") && username == "NickServ") {
     size_t separatingColon = str.substr(1, str.length()).find(":");
     // we add two to nicknameStart becuase we ignore the starting colon in the message
-    string newAuthenticatedMember = str.substr(separatingColon+2, str.length()-str.find("ACC")-1);
-    authenticatedUsernames.push_back(newAuthenticatedMember);
-    cout << "New authenticated username: '" << newAuthenticatedMember << "'" << endl;
+    string accUsername = str.substr(separatingColon+2, str.length()-str.find("ACC")-1);
+    if (adminCommandsUsed.find(accUsername) != adminCommandsUsed.end()) {
+      outputToUser(accUsername, "You must be authenticated with NickServ to use this command.");
+      cout << "Access failed for user: '" << accUsername << "'" << " with command: " << adminCommandsUsed[accUsername].command << endl;
+    }
+    else
+      cout << "No command for user: " << accUsername << endl;
   }
 
   /* once the connection has been established, we can run the lua plugins */

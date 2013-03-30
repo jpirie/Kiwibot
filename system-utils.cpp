@@ -31,7 +31,7 @@ SystemUtils::SystemUtils() {}
 std::string SystemUtils::runProcessWithReturn(const char* cmd) {
     FILE* pipe = popen(cmd, "r");
     if (!pipe)
-      return "an error occurred";
+      return "Failed to open a pipe to run a process.";
 
     char buffer[256];
     string stdout = "";
