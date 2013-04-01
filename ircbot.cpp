@@ -576,7 +576,7 @@ void IrcBot::runAdminCommand(string username, adminCommand thisCommand) {
 	cout << "done!..." << endl;
       }
       else
-	outputToUser(username, "Unknown command.");
+	outputToUser(username, "Unknown command: " + thisCommand.command);
     }
     else {
       string checkAccess = "PRIVMSG NickServ : ACC " + username;
@@ -637,6 +637,9 @@ int IrcBot::parseMessage(string str) {
 
     // wipe the username from the map responsible for relaying text
     directUserText.erase(username);
+
+    // wipe any admin commansd the user have stored in the map so they aren't run on next login
+    adminCommandsUsed.erase(username);
 
     std::vector<string>::iterator position = std::find(authenticatedUsernames.begin(), authenticatedUsernames.end(), username);
     if (position != authenticatedUsernames.end())
@@ -778,7 +781,9 @@ int IrcBot::parseMessage(string str) {
       if (newAuthenticatedMember == "sadger" || newAuthenticatedMember == "jpirie" || newAuthenticatedMember == "simown") {
 	authenticatedUsernames.push_back(newAuthenticatedMember);
 	// run any command that is current in the map
-	runAdminCommand(newAuthenticatedMember, adminCommandsUsed[newAuthenticatedMember]);
+	if (adminCommandsUsed.find(newAuthenticatedMember) != adminCommandsUsed.end()) {
+	  runAdminCommand(newAuthenticatedMember, adminCommandsUsed[newAuthenticatedMember]);
+	}
 	cout << "New authenticated username: '" << newAuthenticatedMember << "'" << endl;
       }
   }
