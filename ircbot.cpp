@@ -84,6 +84,8 @@ Timer uptimeTimer;
 // holds information for private messaging to users (e.g. history searching)
 struct userTextManagement {
   int textPosition;
+  int currentPage;
+  int numPages;
   vector<string> text;
 };
 
@@ -222,10 +224,27 @@ int IrcBot::outputToUser(string username, string msg) {
     userTextManagement currentUser;
     currentUser.textPosition = MAX_LINES_OUTPUT;
     currentUser.text = linesToSend;
-    directUserText[username] = currentUser;
+
+    currentUser.numPages = linesToSend.size()/MAX_LINES_OUTPUT;
+
+    // if there is a remainder, then there is going to be one extra page
+    if (linesToSend.size() % MAX_LINES_OUTPUT != 0)
+      currentUser.numPages++;
+
+    currentUser.currentPage = 1;
+
     for (unsigned i=0; i<MAX_LINES_OUTPUT; i++)
       sendMessage("PRIVMSG "+username+" :"+linesToSend.at(i));
-    sendMessage("PRIVMSG "+username+" :[ Commands: 'next' (see next page); 'prev' (see previous page) ]");
+
+    std::ostringstream pageDisplay;
+    pageDisplay << "PRIVMSG "+username+" :Page ";
+    pageDisplay << currentUser.currentPage;
+    pageDisplay << " of ";
+    pageDisplay << currentUser.numPages;
+    pageDisplay << ". [ Commands: 'next' (see next page); 'prev' (see previous page); 'page N' (go to page N) ]";
+
+    directUserText[username] = currentUser;
+    sendMessage(pageDisplay.str());
   }
 }
 
@@ -441,6 +460,9 @@ void IrcBot::parsePrivateMessage(string str) {
    * want to know */
   if (userMessage.find("next") != string::npos) {
     userTextManagement userText = directUserText[username];
+
+    bool saidSomething = false;
+
     // when a user asks for 'next' without information stored for the user
     if (userText.text.empty()) {
       sendMessage("PRIVMSG "+username+" :I don't know what you want 'next' of. Perhaps my memory isn't what it used to be...");
@@ -451,13 +473,33 @@ void IrcBot::parsePrivateMessage(string str) {
     for (unsigned i=startPoint; i<endPoint; i++) {
       try {
 	sendMessage("PRIVMSG "+username+" :"+userText.text.at(i));
+	saidSomething = true;
 	userText.textPosition = i + 1;
       }
       catch (out_of_range& outOfRange) {
-	sendMessage("PRIVMSG "+username+" :[ End of text. Commands: 'prev' (see previous page) ]");
-	break;
+	if (saidSomething)
+	  userText.currentPage++;
+	directUserText[username] = userText;
+	std::ostringstream endOfTextDisplay;
+	endOfTextDisplay << "PRIVMSG "+username+" :End of text. Page ";
+	endOfTextDisplay << userText.currentPage;
+	endOfTextDisplay << " of ";
+	endOfTextDisplay << userText.numPages;
+	endOfTextDisplay << ". [ Commands: 'prev' (see previous page); 'page N' (go to page N) ]";
+	sendMessage(endOfTextDisplay.str());
+	return;
       }
     }
+
+    userText.currentPage++;
+
+    std::ostringstream nextPageDisplay;
+    nextPageDisplay << "PRIVMSG "+username+" :Page ";
+    nextPageDisplay << userText.currentPage;
+    nextPageDisplay << " of ";
+    nextPageDisplay << userText.numPages;
+    nextPageDisplay << ". [ Commands: 'next' (see next page); 'prev' (see previous page); 'page N' (go to page N) ]";
+    sendMessage(nextPageDisplay.str());
 
     // update the map so we know where the text position is for the user
     directUserText[username] = userText;
@@ -488,6 +530,18 @@ void IrcBot::parsePrivateMessage(string str) {
 	sendMessage("PRIVMSG "+username+" :"+userText.text.at(i));
       }
       userText.textPosition = userText.textPosition + MAX_LINES_OUTPUT;
+
+      userText.currentPage--;
+
+      std::ostringstream prevPageDisplay;
+      prevPageDisplay << "PRIVMSG "+username+" :Page ";
+      prevPageDisplay << userText.currentPage;
+      prevPageDisplay << " of ";
+      prevPageDisplay << userText.numPages;
+      prevPageDisplay << ". [ Commands: 'next' (see next page); 'prev' (see previous page); 'page N' (go to page N) ]";
+      sendMessage(prevPageDisplay.str());
+
+
       // update map so we keep track of where the user is in the text
       directUserText[username] = userText;
     }
