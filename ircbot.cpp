@@ -455,6 +455,8 @@ void IrcBot::parsePrivateMessage(string str) {
   cout << "serverInfo: " << serverInfo << endl;
   cout << "userMesage: " << userMessage << endl;
 
+  string pageCommand = "page ";
+
   /* next/prev system the user can say 'next' and 'prev' to get more
    * output from the bot where there is a lot of information that they
    * want to know */
@@ -511,7 +513,7 @@ void IrcBot::parsePrivateMessage(string str) {
       sendMessage("PRIVMSG "+username+" :I don't know what you want 'prev' of. Perhaps my memory isn't what it used to be...");
       return;
     }
-    else if ((userText.textPosition < MAX_LINES_OUTPUT) || (userText.textPosition - MAX_LINES_OUTPUT - 1 < 0)) {
+    else if ((userText.textPosition < MAX_LINES_OUTPUT) || (userText.textPosition - MAX_LINES_OUTPUT - 1 < 0) || userText.currentPage == 1) {
       // they are still on the first page
       sendMessage("PRIVMSG "+username+" :There is no previous text I'm afraid.");
       return;
@@ -541,10 +543,67 @@ void IrcBot::parsePrivateMessage(string str) {
       prevPageDisplay << ". [ Commands: 'next' (see next page); 'prev' (see previous page); 'page N' (go to page N) ]";
       sendMessage(prevPageDisplay.str());
 
-
       // update map so we keep track of where the user is in the text
       directUserText[username] = userText;
     }
+  }
+  else if (userMessage.find(pageCommand) != string::npos) {
+    string pageNumber = userMessage.substr(userMessage.find(pageCommand) + pageCommand.length());
+    int pageNum = atoi(pageNumber.c_str());
+    bool saidSomething = false;
+
+    userTextManagement userText = directUserText[username];
+    if (userText.text.empty()) {
+      // we don't have any text stored for that user
+      sendMessage("PRIVMSG "+username+" :I don't have any text stored for you!");
+      return;
+    }
+
+    if (pageNum < 1) {
+      sendMessage("PRIVMSG "+username+" :Invalid page number specified.");
+      return;
+    }
+    else if (pageNum > userText.numPages) {
+      sendMessage("PRIVMSG "+username+" :There are not that many pages in the text.");
+      return;
+    }
+    else {
+      userText.textPosition = (pageNum-1) * MAX_LINES_OUTPUT;
+      int startPoint = userText.textPosition;
+      int endingPoint = userText.textPosition+MAX_LINES_OUTPUT;
+      // display the text to the user
+      for (unsigned i=startPoint; i<endingPoint; i++)
+      try {
+	sendMessage("PRIVMSG "+username+" :"+userText.text.at(i));
+	saidSomething = true;
+	userText.textPosition = i + 1;
+      }
+      catch (out_of_range& outOfRange) {
+	userText.currentPage = pageNum;
+	directUserText[username] = userText;
+	std::ostringstream endOfTextDisplay;
+	endOfTextDisplay << "PRIVMSG "+username+" :End of text. Page ";
+	endOfTextDisplay << userText.currentPage;
+	endOfTextDisplay << " of ";
+	endOfTextDisplay << userText.numPages;
+	endOfTextDisplay << ". [ Commands: 'prev' (see previous page); 'page N' (go to page N) ]";
+	sendMessage(endOfTextDisplay.str());
+	return;
+      }
+    }
+
+    userText.currentPage = pageNum;
+
+    std::ostringstream prevPageDisplay;
+    prevPageDisplay << "PRIVMSG "+username+" :Page ";
+    prevPageDisplay << userText.currentPage;
+    prevPageDisplay << " of ";
+    prevPageDisplay << userText.numPages;
+    prevPageDisplay << ". [ Commands: 'next' (see next page); 'prev' (see previous page); 'page N' (go to page N) ]";
+    sendMessage(prevPageDisplay.str());
+
+    // update map so we keep track of where the user is in the text
+    directUserText[username] = userText;
   }
 
 }
