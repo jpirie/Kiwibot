@@ -611,7 +611,7 @@ void IrcBot::parsePrivateMessage(string str) {
 void IrcBot::runAdminCommand(string username, adminCommand thisCommand) {
 
   string searchHistory = ": search history";
-  string viewHistory = ": view history";
+  string viewHistory = ": history";
   string setTopic = ": set topic";
 
   if (username == "sadger" || username == "jpirie" || username == "simown") {
@@ -623,7 +623,7 @@ void IrcBot::runAdminCommand(string username, adminCommand thisCommand) {
       else if (thisCommand.command == setTopic) {
 	int x = stringSearch(thisCommand.userMessage, setTopic);
 	// we remove three at the end to remove the newline character
-	string userString = thisCommand.userMessage.substr(x + setTopic.length(), thisCommand.userMessage.length()-setTopic.length()-3);
+	string userString = thisCommand.userMessage.substr(this->nick.length() + setTopic.length() + 1, thisCommand.userMessage.length()-this->nick.length()-setTopic.length()-3);
 	string sendString = "TOPIC "+channelName+" "+userString;
 	cout << "Sending string: " << sendString << endl;
 	//	sendMessage(sendString);
@@ -638,29 +638,32 @@ void IrcBot::runAdminCommand(string username, adminCommand thisCommand) {
 	int x = stringSearch(thisCommand.userMessage, searchHistory);
 	// we remove three at the end to remove the newline character
 	string tempFile = systemUtils.createTempFile();
-	string userString = thisCommand.userMessage.substr(x + searchHistory.length(), thisCommand.userMessage.length()-searchHistory.length()-3);
+	string userString = thisCommand.userMessage.substr(this->nick.length() + searchHistory.length() + 1, thisCommand.userMessage.length()-this->nick.length()-searchHistory.length()-3);
 	// show no other searches through history in the output, this likely isn't useful
 	string targetString = "grep -i \""+userString+"\" history/*.log | grep -v \"search history\" | sort -r > "+tempFile;
 	cout << "running shell command: " << targetString << endl;
 	systemUtils.runProcessWithReturn(targetString.c_str());
-	string toPastebinString = "curl -s -S --data-urlencode \"txt=`cat "+tempFile+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
-	cout << "running shell command: " << toPastebinString << endl;
-	string pastebinLink = systemUtils.runProcessWithReturn(toPastebinString.c_str());
-	outputToUser(username, "Search results available at the following link: "+pastebinLink);
+	string toCodebinString = "curl -d private=True -d \"lang=Plain Text&submit=Submit\" --data-urlencode code@"+tempFile+" codepad.org | grep -o \"http://codepad.org/[a-Z0-9]*\" | head -n 1 ";
+	//string toPastebinString = "curl -s -S --data-urlencode \"txt=`cat "+tempFile+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
+	cout << "running shell command: " << toCodebinString << endl;
+	outputToUser(username, "Uploading results...");
+	string codebinLink = systemUtils.runProcessWithReturn(toCodebinString.c_str());
+	outputToUser(username, "Search results available at the following link: "+codebinLink);
       }
       else if (thisCommand.command == viewHistory) {
 	int x = stringSearch(thisCommand.userMessage, viewHistory);
 	// we remove three at the end to remove the newline character
-	string userString = thisCommand.userMessage.substr(x + viewHistory.length(), thisCommand.userMessage.length()-viewHistory.length()-3);
-
+	string userString = thisCommand.userMessage.substr(this->nick.length() + viewHistory.length() + 1, thisCommand.userMessage.length()-this->nick.length()-viewHistory.length()-3);
 	/* first check the file exsits
 	 * don't want to bring in boost just for this, so running a shell command to check */
 	string checkFileExists = "if [ -f history/"+userString+" ]; then echo \"yes\"; else echo \"no\"; fi";
 	string results = systemUtils.runProcessWithReturn(checkFileExists.c_str());
 	if (stringSearch(results, "yes")) {
-	  string targetString = "curl -s -S --data-urlencode \"txt=`cat history/"+userString+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
-	  cout << "running shell command: " << targetString << endl;
-	  string results = systemUtils.runProcessWithReturn(targetString.c_str());
+	  string toCodebinString = "curl -d private=True -d \"lang=Plain Text&submit=Submit\" --data-urlencode code@history/"+userString+" codepad.org | grep -o \"http://codepad.org/[a-Z0-9]*\" | head -n 1";
+	  //string targetString = "curl -s -S --data-urlencode \"txt=`cat history/"+userString+"`\" \"http://pastehtml.com/upload/create?input_type=txt&result=address\"";
+	  cout << "running shell command: " << toCodebinString << endl;
+	  outputToUser(username, "Uploading history file...");
+	  string results = systemUtils.runProcessWithReturn(toCodebinString.c_str());
 	  outputToUser(username, "History file available at: "+results);
 	}
 	else
@@ -711,6 +714,11 @@ int IrcBot::parseMessage(string str) {
   string userMessage = getUserMessage(str);
   bool isPrivateMessage = false;
 
+
+  // if the message starts with an exclamation mark, let the bot respond to it
+  if (userMessage.substr(0, 1) == "!")
+    userMessage = this->nick + ": " + userMessage.substr(1,userMessage.length());
+
   adminCommand thisCommand;
   thisCommand.userMessage = userMessage;
   thisCommand.isPrivateMessage = isPrivateMessage;
@@ -760,12 +768,12 @@ int IrcBot::parseMessage(string str) {
   }
 
   if (stringSearch(userMessage, ircbotName+": help")) {
-    outputToUser(username, "I have all kinds of fun features! Syntax: \""+ircbotName+": <command>\" on the following commands:\n"
+    outputToUser(username, "I have all kinds of fun features! Syntax: \""+ircbotName+": <command>\" on the following commands (using '!' instead of my name is acceptable e.g. !set topic Ahoy there):\n"
 		 "\"set topic <topic>\". Sets the topic to <topic>.\n"
 		 "\"uptime\". Displays uptime.\n"
 		 "\"give history\". Creates tarball of history and puts link on web (must be kiwibot admin)\n"
 		 "\"search history <string>\". Searches history (must be kiwibot admin)\n"
-		 "\"view history <log name>\". Displays history file (must be kiwibot admin)\n"
+		 "\"history [<log name>]\". Displays history file with name log_name (same day if omitted, must be kiwibot admin)\n"
 		 "\"hide history\". Removes existing tarball of history on web (must be kiwibot admin)\n"
 		 "\"give op status\". Gives op status (must be kiwibot admin)\n"
 		 "\"take op status\". Take op status away (must be kiwibot admin)\n"
@@ -806,7 +814,6 @@ int IrcBot::parseMessage(string str) {
     outputToSource(ss.str(), username, isPrivateMessage);
   }
 
-  // admin commands
   else if (stringSearch(userMessage, ircbotName+": update repo")) {
     thisCommand.command = ": update repo";
     runAdminCommand(username, thisCommand);
@@ -827,8 +834,57 @@ int IrcBot::parseMessage(string str) {
     thisCommand.command = ": hide history";
     runAdminCommand(username, thisCommand);
   }
-  else if (stringSearch(userMessage, ircbotName+": view history")) {
-    thisCommand.command = ": view history";
+  else if (stringSearch(userMessage, ircbotName+": history start")) {
+    if (isPrivateMessage)
+      outputToUser(username, "This command cannot be used in private chat.");
+    else {
+      if (loggingHistory) {
+	loggingHistory = false;
+	outputToChannel("I'm already keeping my ears peeled for tasty parsable information!");
+	loggingHistory = true;
+      }
+      else {
+	outputToChannel("My ears are now open, I shall store future conversations for tasty parsing later.");
+	loggingHistory = true;
+      }
+    }
+  }
+  else if (stringSearch(userMessage, ircbotName+": history stop")) {
+    if (isPrivateMessage)
+      outputToUser(username, "This command cannot be used in private chat.");
+    else {
+      if (loggingHistory) {
+	loggingHistory = false;
+	outputToChannel("Ah I see, cunning secret conversations. I know not of what you speak, your sneakrets are safe with me.");
+      }
+      else
+	outputToChannel("My ears are already shut to your sneakiness. I'll keep it secret. I'll keep it safe.");
+    }
+  }
+  // for use of history command WITH an argument
+  else if (stringSearch(userMessage, ircbotName+": history ")) {
+    thisCommand.command = ": history";
+    runAdminCommand(username, thisCommand);
+  }
+  // for use of history command with no argument
+  else if (stringSearch(userMessage, ircbotName+": history")) {
+    time_t now = time(0);
+    tm *ltm = localtime(&now);
+    int year = 1900 + ltm->tm_year;
+    int month = 1 + ltm->tm_mon;
+    int day = ltm->tm_mday;
+
+    // figure out the name of the current history log file
+    std::ostringstream currentLog;
+    currentLog << year;
+    if (month >= 10)  currentLog << "-" << month;
+    else              currentLog << "-0" << month;
+    if (day >= 10)    currentLog << "-" << day;
+    else              currentLog << "-0" << day;
+    currentLog << ".log";
+
+    thisCommand.userMessage = this->nick + ": history " + currentLog.str() + "\r\n";
+    thisCommand.command = ": history";
     runAdminCommand(username, thisCommand);
   }
   else if (stringSearch(userMessage, ircbotName+": load data")) {
@@ -856,33 +912,6 @@ int IrcBot::parseMessage(string str) {
       close (connectionSocket);  //close the open socket
       cout << "Shutting down...";
       return SHUTDOWN;
-    }
-  }
-  else if (stringSearch(userMessage, ircbotName+": history start")) {
-    if (isPrivateMessage)
-      outputToUser(username, "This command cannot be used in private chat.");
-    else {
-      if (loggingHistory) {
-	loggingHistory = false;
-	outputToChannel("I'm already keeping my ears peeled for tasty parsable information!");
-	loggingHistory = true;
-      }
-      else {
-	outputToChannel("My ears are now open, I shall store future conversations for tasty parsing later.");
-	loggingHistory = true;
-      }
-    }
-  }
-  else if (stringSearch(userMessage, ircbotName+": history stop")) {
-    if (isPrivateMessage)
-      outputToUser(username, "This command cannot be used in private chat.");
-    else {
-      if (loggingHistory) {
-	loggingHistory = false;
-	outputToChannel("Ah I see, cunning secret conversations. I know not of what you speak, your sneakrets are safe with me.");
-      }
-      else
-	outputToChannel("My ears are already shut to your sneakiness. I'll keep it secret. I'll keep it safe.");
     }
   }
   /* we check the whole string here (str) not the userMessage, because that's not set up

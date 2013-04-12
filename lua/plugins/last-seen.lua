@@ -28,7 +28,8 @@
 -- a plugin which will store when a user was last seen on the channel
 
 namesSeen = {}
-seenCommand = "!seen "
+seenCommand = getBotName()..": seen"
+seenAllCommand = getBotName()..": seenall"
 
 function loadData ()
   print ("Loading last-seen.lua data...")
@@ -111,7 +112,14 @@ function lastSeenParse(username, serverPart, userMessage, isPrivateMessage)
     namesSeen[name] = os.date("%H:%M on %A, %B %d, %Y")                       -- add the user to the seen array
     saveLastSeenData()                                                        -- update the file to reflect they have been seen
     print("Adding "..name.." to last seen map for time "..namesSeen[name]);
-
+  elseif (string.find(userMessage, seenAllCommand)) then
+    local outputString = "Here's when I last saw peeps:\n"
+    for key,value in pairs(namesSeen) do
+      outputString = outputString.."("..key..", "..value..")\n"
+      print ("output string: "..outputString);
+    end
+    outputString = outputString .. "End of list."
+    sendLuaPrivateMessage(username, outputString)
   elseif (string.find(userMessage, seenCommand)) then
     -- grab the name the user supplied (we take away 2 from the length of the string because we don't want the \n part (not one char... odd)
     local name = userMessage:sub(string.find(userMessage, seenCommand)+string.len(seenCommand),string.len(userMessage)-2)
@@ -120,14 +128,6 @@ function lastSeenParse(username, serverPart, userMessage, isPrivateMessage)
     else
       sendLuaMessageToSource(username, "I know not of the person you speak of. Quite the mystery indeed.", isPrivateMessage);
     end
-  elseif (string.find(userMessage, "!seenall")) then
-    local outputString = "Here's when I last saw peeps:\n"
-    for key,value in pairs(namesSeen) do
-      outputString = outputString.."("..key..", "..value..")\n"
-      print ("output string: "..outputString);
-    end
-    outputString = outputString .. "End of list."
-    sendLuaPrivateMessage(username, outputString)
   end
 end
 

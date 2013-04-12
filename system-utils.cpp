@@ -21,6 +21,7 @@
 #include <iostream>
 #include <string>
 #include <stdio.h>
+#include <algorithm>
 
 #include "system-utils.h"
 
@@ -44,5 +45,13 @@ std::string SystemUtils::runProcessWithReturn(const char* cmd) {
 }
 
 std::string SystemUtils::createTempFile() {
-  return runProcessWithReturn("mktemp");
+  string output = runProcessWithReturn("mktemp");
+  string::size_type i = 0;
+  while (i < output.length()) {
+    i = output.find('\n', i);
+    if (i == string::npos)
+      break;
+    output.erase(i);
+  }
+  return output;
 }
