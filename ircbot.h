@@ -42,7 +42,7 @@ public:
 
   std::string getChannelSendString();
 
-  void init(std::string, std:: string);
+  void init(std::string, std:: string, std::string);
 
   std::string getNick();
 

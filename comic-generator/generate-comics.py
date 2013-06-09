@@ -41,6 +41,7 @@ historyDir = sys.argv[1]
 for root, dirs, filenames in os.walk(historyDir):
     for f in filenames:
         fileHandler = open(os.path.join(root, f), 'r')
+        print("Reading history log: " + f)
         fileContents = fileHandler.readlines()
         lineIter = iter(fileContents)
 
@@ -48,12 +49,25 @@ for root, dirs, filenames in os.walk(historyDir):
         for line in lineIter:
             counter = counter + 1
             # look for funny lines
-            # it's a longer line, include the line including 'lol'
-            if (line.lower().find("lol") != -1) and len(line) > (DATE_LENGTH + 15):
+
+            # if we see 'get out', we always want to include the 'get out' line
+            if (line.lower().find("get out") != -1):
                 printComic(strip(fileContents[counter-6]),strip(fileContents[counter-5]),strip(fileContents[counter-4]),
                            strip(fileContents[counter-3]),strip(fileContents[counter-2]),strip(fileContents[counter-1]))
-            # otherwise, don't show the 'lol' line
-            elif (line.lower().find("lol") != -1):
-                printComic(strip(fileContents[counter-7]),strip(fileContents[counter-6]),strip(fileContents[counter-5]),
-                           strip(fileContents[counter-4]),strip(fileContents[counter-3]),strip(fileContents[counter-2]))
 
+            # if it's a longer line, include the line including the funny keyword
+            if len(line) > (DATE_LENGTH + 15):
+                if (line.lower().find("lol") != -1):
+                    printComic(strip(fileContents[counter-6]),strip(fileContents[counter-5]),strip(fileContents[counter-4]),
+                               strip(fileContents[counter-3]),strip(fileContents[counter-2]),strip(fileContents[counter-1]))
+                elif (line.lower().find("haha") != -1):
+                    printComic(strip(fileContents[counter-6]),strip(fileContents[counter-5]),strip(fileContents[counter-4]),
+                               strip(fileContents[counter-3]),strip(fileContents[counter-2]),strip(fileContents[counter-1]))
+            # otherwise ignore the funny keyword and instead take the (maximum) six lines before it
+            else:
+                if (line.lower().find("lol") != -1):
+                    printComic(strip(fileContents[counter-7]),strip(fileContents[counter-6]),strip(fileContents[counter-5]),
+                               strip(fileContents[counter-4]),strip(fileContents[counter-3]),strip(fileContents[counter-2]))
+                if (line.lower().find("haha") != -1):
+                    printComic(strip(fileContents[counter-7]),strip(fileContents[counter-6]),strip(fileContents[counter-5]),
+                               strip(fileContents[counter-4]),strip(fileContents[counter-3]),strip(fileContents[counter-2]))

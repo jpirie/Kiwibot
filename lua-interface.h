@@ -37,12 +37,14 @@ class LuaInterface {
   static SystemUtils* systemUtils;
   static int sendLuaMessage(lua_State*);
   static int sendLuaMessageToSource(lua_State*);
+  static int saveData(lua_State *luaState);
   static int getBotName(lua_State*);
   static int sendLuaPrivateMessage(lua_State*);
   static int getAuthenticatedUsernames(lua_State *luaState);
 
  public:
   LuaInterface();
+  LuaInterface(std::string);
   lua_State *luaState;
   void initState(IrcBot*);
   void savePluginData();

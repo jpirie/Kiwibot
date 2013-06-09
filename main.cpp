@@ -31,6 +31,7 @@ int main(int argc, char* argv[]) {
   // set nick and channel information
   string nick = "KaffinatedKiwi";
   string channel = "#caffeine-addicts";
+  string dataFile = "./plugin-data.sav";
   string password = "";
   bool connect = true;
 
@@ -65,6 +66,16 @@ int main(int argc, char* argv[]) {
 	return 1;
       }
     }
+    else if (!arg.compare("-s") || !arg.compare("--save-file")) {
+      if (argv[argumentCounter+1]) {
+	dataFile = argv[argumentCounter+1];
+	argumentCounter += 2;
+      }
+      else {
+	cout << "Use save file argument requires a parameter" << endl;
+	return 1;
+      }
+    }
     else if (!arg.compare("-n") || !arg.compare("--nick")) {
       if (argv[argumentCounter+1]) {
 	nick = argv[argumentCounter+1];
@@ -82,11 +93,12 @@ int main(int argc, char* argv[]) {
     }
     else if (!arg.compare("--help") || !arg.compare("-?") || !arg.compare("-h")) {
       cout << "Arguments list:" << endl;
-      cout << "\t-p | --password <password>: Sets the password" << endl;
-      cout << "\t-c | --channel <room name>: Sets the room channel name to " << endl;
-      cout << "\t-n | --nick <nickname>: Sets the nickname to <nickname>" << endl;
-      cout << "\t-d | --debug: Kiwi joins channel '#caffeine-addicts-test' and has nick 'kiwitest'" << endl;
-      cout << "\t-h | --help: Displays this help text" << endl;
+      cout << "\t-p | --password <password>: Sets the password." << endl;
+      cout << "\t-c | --channel <room name>: Sets the room channel name." << endl;
+      cout << "\t-s | --save-file <file>: Sets the file data is saved to. Default is ./kiwi-data.sav" << endl;
+      cout << "\t-n | --nick <nickname>: Sets the nickname to <nickname>." << endl;
+      cout << "\t-d | --debug: Kiwi joins channel '#caffeine-addicts-test' and has nick 'kiwitest'." << endl;
+      cout << "\t-h | --help: Displays this help text." << endl;
       argumentCounter++;
       connect = false;
     }
@@ -103,7 +115,7 @@ int main(int argc, char* argv[]) {
       IrcBot bot = IrcBot(nick,"USER guest tolmoon tolsun :Ronnie Regan");
 
       //initialise the bot on channel specified in parameter
-      bot.init(channel, password);
+      bot.init(channel, password, dataFile);
 
       /* start the main loop where we check for messages */
       botStatus = bot.mainLoop();

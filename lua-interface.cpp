@@ -24,6 +24,7 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
+#include <fstream>
 
 #include "ircbot.h"
 #include "lua-interface.h"
@@ -33,6 +34,8 @@ using namespace std;
 // set to false when we have loaded the data from plugins for the first time
 bool firstPluginLoad = true;
 
+string saveFile;
+
 IrcBot* LuaInterface::ircbot;
 SystemUtils* LuaInterface::systemUtils;
 
@@ -40,7 +43,6 @@ SystemUtils* LuaInterface::systemUtils;
  * we need a new function because C++ functions must have a specific signature
  * if lua functions are to call them */
 int LuaInterface::sendLuaMessage(lua_State *luaState) {
-  cout << "HERE!" << endl;
   string msg = (*ircbot).getChannelSendString();
   lua_gettop(luaState);
 
@@ -75,6 +77,10 @@ int LuaInterface::sendLuaPrivateMessage(lua_State *luaState) {
   // first parameter: username, second parameter: message
   ircbot->outputToUser(lua_tostring(luaState, 1), lua_tostring(luaState, 2));
   return 0;
+}
+
+LuaInterface::LuaInterface(string thisSaveFile) {
+  saveFile = thisSaveFile;
 }
 
 LuaInterface::LuaInterface() {
@@ -228,6 +234,7 @@ void LuaInterface::initState(IrcBot* bot) {
   lua_register(luaState, "sendLuaMessageToSource", sendLuaMessageToSource);
   lua_register(luaState, "getBotName", getBotName);
   lua_register(luaState, "sendLuaPrivateMessage", sendLuaPrivateMessage);
+  lua_register(luaState, "saveData", saveData);
   std::cerr << "-- Loading plugin: " << "lua/loader.lua" << std::endl;
   int status = luaL_loadfile(luaState, "lua/loader.lua");
 
@@ -244,7 +251,7 @@ void LuaInterface::initState(IrcBot* bot) {
 /* same as sendMessage but called by the Lua code and sent to a user
  * if message was sent privately */
 int LuaInterface::sendLuaMessageToSource(lua_State *luaState) {
-string msg = ircbot->getChannelSendString();
+  string msg = ircbot->getChannelSendString();
   lua_gettop(luaState);
 
   string username = lua_tostring(luaState, 1);
@@ -269,4 +276,33 @@ string msg = ircbot->getChannelSendString();
 
 lua_State* LuaInterface::getState() {
   return this->luaState;
+}
+
+/* this function is new and so far unused. In the future, the lua code
+   should hopefully call this function when any data is to be saved */
+int LuaInterface::saveData(lua_State *luaState) {
+  lua_gettop(luaState);
+
+  // grab the first and second arguments - name of plugin and data to save
+  string plugin = lua_tostring(luaState, 1);
+  string saveString = lua_tostring(luaState, 2);
+
+  string line;
+
+  cout << "Opening file: " << saveFile << endl;
+
+  fstream file (saveFile.c_str());
+  if (file.is_open()) {
+    while (file.good()) {
+      getline (file,line);
+      cout << line << endl;
+      //jpirie: perhaps using 'write' of fstream would be better here...
+      //file << "test output";
+
+    }
+    file.close();
+  }
+  else
+    cout << "Unable to open file: " + saveFile;
+  cout << "Closed file: " << saveFile << endl;
 }

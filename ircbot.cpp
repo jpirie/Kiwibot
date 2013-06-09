@@ -68,6 +68,7 @@ SystemUtils systemUtils;
 string channelSendString = "";
 string channelName = "";
 string ircbotName = "";
+string dataFile = "";
 
 // integer return codes from functions.
 int SUCCESS = 0;       // success flag
@@ -253,11 +254,18 @@ string IrcBot::getChannelSendString() {
 }
 
 // initialises the irc bot.
-void IrcBot::init(string channel, string password) {
+void IrcBot::init(string channel, string password, string saveFile) {
 
   // make directories that might not exist
   systemUtils.runProcessWithReturn("mkdir -p history/");
+
+  /* there are currently two touch calls made here; the first one
+     should go away eventually */
   systemUtils.runProcessWithReturn("touch plugin-data.sav");
+  const char* touchCommand = ("touch "+saveFile).c_str();
+  systemUtils.runProcessWithReturn(touchCommand);
+
+  dataFile = saveFile;
 
   channelSendString = "PRIVMSG "+channel+" :";
   channelName = channel;
@@ -268,7 +276,7 @@ void IrcBot::init(string channel, string password) {
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
-  luaInterface = LuaInterface();
+  luaInterface = LuaInterface(dataFile);
   luaInterface.initState(this);
 
   systemUtils = SystemUtils();
