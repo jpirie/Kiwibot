@@ -25,6 +25,7 @@
 #include <vector>
 #include <algorithm>
 #include <fstream>
+#include <vector>
 
 #include "ircbot.h"
 #include "lua-interface.h"
@@ -287,22 +288,55 @@ int LuaInterface::saveData(lua_State *luaState) {
   string plugin = lua_tostring(luaState, 1);
   string saveString = lua_tostring(luaState, 2);
 
+  vector<string> fileContents;
   string line;
 
   cout << "Opening file: " << saveFile << endl;
 
-  fstream file (saveFile.c_str());
-  if (file.is_open()) {
-    while (file.good()) {
-      getline (file,line);
-      cout << line << endl;
-      //jpirie: perhaps using 'write' of fstream would be better here...
-      //file << "test output";
-
-    }
-    file.close();
+  fstream file;
+  file.open (saveFile.c_str(), ios_base::in);
+  while (file.good()) {
+    getline (file,line);
+    fileContents.push_back(line);
   }
-  else
-    cout << "Unable to open file: " + saveFile;
+  file.close();
+
+  //jpirie: perhaps using 'write' of fstream would be better here...
+  //file << "test output" << endl;
+
   cout << "Closed file: " << saveFile << endl;
+
+  cout << "File contents: " << endl;
+  for(std::vector<string>::const_iterator i = fileContents.begin(); i != fileContents.end(); ++i)
+    std::cout << *i << endl;
+
+  cout << "Removing [lastseen] data..."; << endl;
+  basic_string<char> comp = "[lastseen]";
+  for(std::vector<string>::iterator i = fileContents.begin(); i != fileContents.end(); ++i)
+    if (*i == comp) {
+      advance (i,1);
+      bool done = false;
+      while (!done) {
+	if (*i == "[end]") {
+	  done = true;
+	  break;
+	}
+	else
+	  fileContents.erase(i);
+      }
+    }
+
+  cout << "NEW file contents: " << endl;
+  for(std::vector<string>::const_iterator i = fileContents.begin(); i != fileContents.end(); ++i)
+    std::cout << *i << endl;
+
+
+  // fstream file;
+  // file.open (saveFile.c_str(), ios_base::in);
+  // while (file.good()) {
+  //   getline (file,line);
+  //   fileContents.push_back(line);
+  // }
+  // file.close();
+
 }
