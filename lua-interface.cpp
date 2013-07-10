@@ -126,8 +126,8 @@ void LuaInterface::runPlugins(string username, string serverInfo, string userMes
     string luaFilesCommand = "find lua/plugins -name \"*.lua\"";
     string luaFiles = (*systemUtils).runProcessWithReturn(luaFilesCommand.c_str());
 
-    std::istringstream stream(luaFiles);
-    std::string line;
+    istringstream stream(luaFiles);
+    string line;
     map<string,string>::iterator iter;
 
 
@@ -140,7 +140,7 @@ void LuaInterface::runPlugins(string username, string serverInfo, string userMes
       deletedFiles.push_back(iter->first);
 
     // loop through all the plugins found
-    while(std::getline(stream, line)) {
+    while(getline(stream, line)) {
       // this file exists, removed it from the deletedFiles vector
       vector<string>::iterator vectorIter = find(deletedFiles.begin(), deletedFiles.end(), line);
       if (vectorIter != deletedFiles.end())
@@ -219,7 +219,7 @@ void LuaInterface::runPlugins(string username, string serverInfo, string userMes
     }
 
     if ( errors!=0 ) {
-      std::cerr << "-- ERROR: " << lua_tostring(luaState, -1) << std::endl;
+      cerr << "-- ERROR: " << lua_tostring(luaState, -1) << endl;
       lua_pop(luaState, 1); // remove error message
     }
 }
@@ -236,12 +236,12 @@ void LuaInterface::initState(IrcBot* bot) {
   lua_register(luaState, "getBotName", getBotName);
   lua_register(luaState, "sendLuaPrivateMessage", sendLuaPrivateMessage);
   lua_register(luaState, "saveData", saveData);
-  std::cerr << "-- Loading plugin: " << "lua/loader.lua" << std::endl;
+  cerr << "-- Loading plugin: " << "lua/loader.lua" << endl;
   int status = luaL_loadfile(luaState, "lua/loader.lua");
 
   // check if there was an error loading the plugin loader
   if (status) {
-    std::cerr << "-- error: " << lua_tostring(luaState, -1) << std::endl;
+    cerr << "-- error: " << lua_tostring(luaState, -1) << endl;
     lua_pop(luaState, 1); // remove error message
   }
 
@@ -288,6 +288,9 @@ int LuaInterface::saveData(lua_State *luaState) {
   string plugin = lua_tostring(luaState, 1);
   string saveString = lua_tostring(luaState, 2);
 
+  vector<string> newText;
+  newText.push_back(saveString);
+
   vector<string> fileContents;
   string line;
 
@@ -301,23 +304,21 @@ int LuaInterface::saveData(lua_State *luaState) {
   }
   file.close();
 
-  //jpirie: perhaps using 'write' of fstream would be better here...
-  //file << "test output" << endl;
-
   cout << "Closed file: " << saveFile << endl;
 
   cout << "File contents: " << endl;
-  for(std::vector<string>::const_iterator i = fileContents.begin(); i != fileContents.end(); ++i)
-    std::cout << *i << endl;
+  for(vector<string>::iterator i = fileContents.begin(); i != fileContents.end(); ++i)
+    cout << *i << endl;
 
-  cout << "Removing [lastseen] data..."; << endl;
-  basic_string<char> comp = "[lastseen]";
-  for(std::vector<string>::iterator i = fileContents.begin(); i != fileContents.end(); ++i)
+  cout << "Removing plugin data..." << endl;
+  basic_string<char> comp = plugin.c_str();
+  for(vector<string>::iterator i = fileContents.begin(); i != fileContents.end(); ++i)
     if (*i == comp) {
       advance (i,1);
       bool done = false;
       while (!done) {
 	if (*i == "[end]") {
+	  copy(newText.begin(), newText.end(), inserter(fileContents, i));
 	  done = true;
 	  break;
 	}
@@ -326,17 +327,11 @@ int LuaInterface::saveData(lua_State *luaState) {
       }
     }
 
+  ofstream outputFile(saveFile.c_str());
   cout << "NEW file contents: " << endl;
-  for(std::vector<string>::const_iterator i = fileContents.begin(); i != fileContents.end(); ++i)
-    std::cout << *i << endl;
-
-
-  // fstream file;
-  // file.open (saveFile.c_str(), ios_base::in);
-  // while (file.good()) {
-  //   getline (file,line);
-  //   fileContents.push_back(line);
-  // }
-  // file.close();
+  for(vector<string>::const_iterator i = fileContents.begin(); i != fileContents.end(); ++i) {
+    cout << *i << endl;
+    outputFile << *i << endl;
+  }
 
 }
