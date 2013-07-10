@@ -134,4 +134,4 @@ function managePlugins(username, serverPart, userMessage, isPrivateMessage)
 end
 
 return {name="Plugin Manager", description="For managing plugins within IRC",
-parseFunction=managePlugins, saveDataFunction=saveData, loadDataFunction=loadData}
+parseFunction=managePlugins, saveDataFunction=saveData, loadDataFunction=loadManagerData}

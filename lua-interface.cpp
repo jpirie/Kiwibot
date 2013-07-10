@@ -210,7 +210,7 @@ void LuaInterface::runPlugins(string username, string serverInfo, string userMes
     }
 
 
-    // call the global function that's been assigned (5 denotes the number of parameters)
+    // call the global function that's been assigned (integer denotes the number of parameters)
     int errors = lua_pcall(luaState, 6, 0, 0);
 
     if (firstPluginLoad) {
@@ -235,7 +235,8 @@ void LuaInterface::initState(IrcBot* bot) {
   lua_register(luaState, "sendLuaMessageToSource", sendLuaMessageToSource);
   lua_register(luaState, "getBotName", getBotName);
   lua_register(luaState, "sendLuaPrivateMessage", sendLuaPrivateMessage);
-  lua_register(luaState, "saveData", saveData);
+  lua_register(luaState, "setPluginData", setPluginData);
+  lua_register(luaState, "getPluginData", getPluginData);
   cerr << "-- Loading plugin: " << "lua/loader.lua" << endl;
   int status = luaL_loadfile(luaState, "lua/loader.lua");
 
@@ -279,9 +280,66 @@ lua_State* LuaInterface::getState() {
   return this->luaState;
 }
 
+int LuaInterface::getPluginData(lua_State *luaState) {
+  lua_gettop(luaState);
+
+  // grab the first argument, the name of the plugin to load data for
+  string plugin = lua_tostring(luaState, 1);
+
+  vector<string> fileContents;   // holds contents of the save file
+  string line;                   // stores the current line during file loading
+
+  // open the plugin data file and read the contents into the fileContents vector
+  cout << "Opening file: " << saveFile << endl;
+  fstream file;
+  file.open (saveFile.c_str(), ios_base::in);
+  while (file.good()) {
+    getline (file,line);
+    fileContents.push_back(line);
+  }
+  file.close();
+
+  cout << "Closed file: " << saveFile << endl;
+
+  cout << "File contents: " << endl;
+  for(vector<string>::iterator i = fileContents.begin(); i != fileContents.end(); ++i)
+    cout << *i << endl;
+
+  // // keep only the lines that are part of the plugin load file
+  vector<string> pluginData;
+  cout << "Extracting plugin data: " << plugin << endl;
+  basic_string<char> comp = plugin.c_str();
+  for(vector<string>::iterator i = fileContents.begin(); i != fileContents.end(); ++i)
+    if (*i == comp) {
+      advance (i,1);
+      bool done = false;
+      while (!done) {
+    	if (*i == "[end]") {
+    	  done = true;
+    	  break;
+    	}
+    	else
+    	  pluginData.push_back(*i);
+	advance(i,1);
+      }
+    }
+
+  // // pass the plugin data back to the lua interface
+  lua_newtable(luaState);
+   int counter = 1;
+   for(vector<string>::iterator j = pluginData.begin(); j != pluginData.end(); ++j) {
+     lua_pushnumber(luaState, counter);
+     lua_pushstring(luaState, (*j).c_str()); // table,key,value
+     lua_rawset(luaState, -3);
+     counter++;
+   }
+   // set the name of the array that the script will access
+   lua_setglobal( luaState, "loadedElement" );
+}
+
 /* this function is new and so far unused. In the future, the lua code
    should hopefully call this function when any data is to be saved */
-int LuaInterface::saveData(lua_State *luaState) {
+int LuaInterface::setPluginData(lua_State *luaState) {
   lua_gettop(luaState);
 
   // grab the first and second arguments - name of plugin and data to save
@@ -295,7 +353,6 @@ int LuaInterface::saveData(lua_State *luaState) {
   string line;
 
   cout << "Opening file: " << saveFile << endl;
-
   fstream file;
   file.open (saveFile.c_str(), ios_base::in);
   while (file.good()) {

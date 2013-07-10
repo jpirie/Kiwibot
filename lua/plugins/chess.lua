@@ -108,4 +108,4 @@ function chessParse(username, serverPart, userMessage, isPrivateMessage)
 end
 
 return {name="Chess", description="Allows two users to play chess on the channel",
-	parseFunction=chessParse, saveDataFunction=saveData, loadDataFunction=loadData}
+	parseFunction=chessParse, saveDataFunction=saveData, loadDataFunction=loadChessData}

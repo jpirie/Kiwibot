@@ -92,6 +92,6 @@ function animalParse(username, serverPart, userMessage, isPrivateMessage)
 end
 
 return {name="Animal Parser", description="Parses greetings for the kiwi",
-	parseFunction=animalParse, saveDataFunction=saveData, loadDataFunction=loadData}
+	parseFunction=animalParse, saveDataFunction=saveData, loadDataFunction=loadAnimalData}
 
 
