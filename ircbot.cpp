@@ -787,6 +787,7 @@ int IrcBot::parseMessage(string str) {
 		 "\"take op status\". Take op status away (must be kiwibot admin)\n"
 		 "\"update repo\". Updates the repository I sit in by pulling from the public http link.\n"
 		 "\"save data\". Saves data of all "+ircbotName+" plugins.\n"
+		 "\"load data\". Loads data of all "+ircbotName+" plugins.\n"
 		 "\"shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(\n"
 		 "\"history <start|stop>\". Starts/stops logging channel conversation.\n"
 		 "\"plugin list\". Lists the current plugins and their activation status.");
