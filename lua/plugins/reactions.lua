@@ -29,7 +29,6 @@ enableCommand = getBotName()..": reaction enable "      -- command to enable a r
 
 function reaction(username, serverPart, userMessage, isPrivateMessage)
   local botname = getBotName():lower()
-  userMessage = userMessage:lower()
 
   -- print reactions if the user requests it
   if (string.find(userMessage, showCommand)) then
