@@ -44,7 +44,7 @@ function squareToArrayValue(square)
   end
 
   if (tonumber(splitMove[2]) < 1 or tonumber(splitMove[2]) > 8) then
-    sendLuaMessage(invalidMove)
+    sendLuaChannelMessage(invalidMove)
   end
 
   numberOfFile=0
@@ -57,7 +57,7 @@ function squareToArrayValue(square)
   elseif (splitMove[1] == "g") then numberOfFile=7
   elseif (splitMove[1] == "h") then numberOfFile=8
   else
-    sendLuaMessage(invalidMove)
+    sendLuaChannelMessage(invalidMove)
   end
 
   arrayValue = numberOfFile + (tonumber(splitMove[2])-1) * 8
@@ -67,16 +67,16 @@ end
 function pawnMove(move)
   local targetSquare = squareToArrayValue(move)
   local currentBoardValue = currentBoard[targetSquare]
-  sendLuaMessage("Square has currently on it "..currentBoardValue)
+  sendLuaChannelMessage("Square has currently on it "..currentBoardValue)
 
   -- check the player want to move into an empty square
   if (currentBoardValue == " ") then
 
     --check that the player is coming from a valid square
 
-    sendLuaMessage("Pawn to "..move)
+    sendLuaChannelMessage("Pawn to "..move)
   else
-    sendLuaMessage(invalidMove)
+    sendLuaChannelMessage(invalidMove)
   end
 end
 
@@ -84,11 +84,11 @@ function chessParse(username, serverPart, userMessage, isPrivateMessage)
   botname = getBotName():lower()
   if (string.find(userMessage, botname..": new chess game")) then
     if (gameInProgress) then
-      sendLuaMessage("A game is already in progress. To restart the game, use the command \"restart chess game\" (not yet implemented!)")
+      sendLuaChannelMessage("A game is already in progress. To restart the game, use the command \"restart chess game\" (not yet implemented!)")
     else
       gameInProgress = true
       currentBoard = createFreshBoard()
-      sendLuaMessage("Got all the pieces off the floor, ready to go. White to move.")
+      sendLuaChannelMessage("Got all the pieces off the floor, ready to go. White to move.")
     end
   elseif (string.find(userMessage, botname..": move ")) then
     -- we should clean this up so we don't have to do it twice
@@ -101,7 +101,7 @@ function chessParse(username, serverPart, userMessage, isPrivateMessage)
     if (string.len(move) == 2) then
       pawnMove(move)
     else
-      sendLuaMessage(move)
+      sendLuaChannelMessage(move)
     end
 
   end

@@ -52,7 +52,7 @@ function managePlugins(username, serverPart, userMessage, isPrivateMessage)
     end
 
     if pluginFound then
-      sendLuaMessage("Unloading plugin " .. pluginName)
+      sendLuaChannelMessage("Unloading plugin " .. pluginName)
     else
       sendLuaMessageToSource(username, "No such plugin " .. pluginName, isPrivateMessage)
     end
@@ -83,9 +83,9 @@ function managePlugins(username, serverPart, userMessage, isPrivateMessage)
       end
 
       if pluginFound then
-        sendLuaMessage("Loading plugin " .. pluginName)
+        sendLuaChannelMessage("Loading plugin " .. pluginName)
       else
-        sendLuaMessage("No such plugin " .. pluginName)
+        sendLuaChannelMessage("No such plugin " .. pluginName)
       end
     end
   end
@@ -117,7 +117,7 @@ function managePlugins(username, serverPart, userMessage, isPrivateMessage)
        sendLuaPrivateMessage(username, "No documentation found for " .. pluginName) 
       end
     else
-      sendLuaMessage("No such plugin " .. pluginName)
+      sendLuaChannelMessage("No such plugin " .. pluginName)
     end
 
   end

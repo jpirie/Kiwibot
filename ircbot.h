@@ -45,6 +45,7 @@ public:
   void init(std::string, std:: string, std::string);
 
   std::string getNick();
+  std::string getChannel();
 
   int mainLoop();
 
@@ -71,6 +72,7 @@ public:
 
   std::string nick;
   std::string user;
+  std::string channel;
 
   // values to help tell if joe is in his office
   bool reportJoeStatus;

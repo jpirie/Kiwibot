@@ -81,11 +81,11 @@ function animalParse(username, serverPart, userMessage, isPrivateMessage)
   hunger = hunger - 1
   if hunger == whineLevel then
     if hunger <= 50 then
-      sendLuaMessage(hungrySynonymsHigh[math.random(#hungrySynonymsLow)])
+      sendLuaChannelMessage(hungrySynonymsHigh[math.random(#hungrySynonymsLow)])
     elseif hunger <=  150 then
-      sendLuaMessage(hungrySynonymsModerate[math.random(#hungrySynonymsLow)])
+      sendLuaChannelMessage(hungrySynonymsModerate[math.random(#hungrySynonymsLow)])
     elseif hunger <= 400 then
-      sendLuaMessage(hungrySynonymsLow[math.random(#hungrySynonymsLow)])
+      sendLuaChannelMessage(hungrySynonymsLow[math.random(#hungrySynonymsLow)])
     end
     whineLevel = math.floor(whineLevel / 2)
   end

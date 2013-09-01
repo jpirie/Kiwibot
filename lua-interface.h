@@ -36,10 +36,14 @@ class LuaInterface {
   static IrcBot* ircbot;
   static SystemUtils* systemUtils;
   static int sendLuaMessage(lua_State*);
+  static int sendLuaChannelMessage(lua_State*);
   static int sendLuaMessageToSource(lua_State*);
   static int getPluginData(lua_State *luaState);
   static int setPluginData(lua_State *luaState);
+  static int runSystemCommand(lua_State*);
+  static int runSystemCommandWithOutput(lua_State*);
   static int getBotName(lua_State*);
+  static int getChannelName(lua_State*);
   static int sendLuaPrivateMessage(lua_State*);
   static int getAuthenticatedUsernames(lua_State *luaState);
 

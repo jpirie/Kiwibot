@@ -26,9 +26,11 @@
 #include <algorithm>
 #include <fstream>
 #include <vector>
+#include <stdlib.h>
 
 #include "ircbot.h"
 #include "lua-interface.h"
+#include "system-utils.h"
 
 using namespace std;
 
@@ -44,6 +46,13 @@ SystemUtils* LuaInterface::systemUtils;
  * we need a new function because C++ functions must have a specific signature
  * if lua functions are to call them */
 int LuaInterface::sendLuaMessage(lua_State *luaState) {
+  lua_gettop(luaState);
+  string msg = lua_tostring(luaState, 1);   // 1 is the first index of the array sent back (we only send one string to this function)
+  send((*ircbot).connectionSocket,msg.c_str(),msg.length(),0);
+  return 0;
+}
+
+int LuaInterface::sendLuaChannelMessage(lua_State *luaState) {
   string msg = (*ircbot).getChannelSendString();
   lua_gettop(luaState);
 
@@ -61,9 +70,30 @@ int LuaInterface::sendLuaMessage(lua_State *luaState) {
   return 0;
 }
 
+int LuaInterface::runSystemCommand(lua_State *luaState) {
+  lua_gettop(luaState);
+  string command = lua_tostring(luaState, 1);   // 1 is the first index of the array sent back (we only send one string to this function)
+  system(command.c_str());
+  return 0;
+}
+
+int LuaInterface::runSystemCommandWithOutput(lua_State *luaState) {
+  lua_gettop(luaState);
+  string command = lua_tostring(luaState, 1);   // 1 is the first index of the array sent back (we only send one string to this function)
+  string ret =  (*systemUtils).runProcessWithReturn(command.c_str());
+  lua_pushstring(luaState, ret.c_str());
+  return 1;
+}
+
 // returns the name of the bot, called by lua
 int LuaInterface::getBotName(lua_State *luaState) {
   lua_pushstring(luaState, ircbot->getNick().c_str());
+  return 1;
+}
+
+// returns the name of the bot, called by lua
+int LuaInterface::getChannelName(lua_State *luaState) {
+  lua_pushstring(luaState, ircbot->getChannel().c_str());
   return 1;
 }
 
@@ -72,7 +102,7 @@ int LuaInterface::getAuthenticatedUsernames(lua_State *luaState) {
   return 1;
 }
 
-// same as sendLuaMessage but for private messages
+// same as sendLuaChannelMessage but for private messages
 int LuaInterface::sendLuaPrivateMessage(lua_State *luaState) {
   lua_gettop(luaState);
   // first parameter: username, second parameter: message
@@ -232,8 +262,12 @@ void LuaInterface::initState(IrcBot* bot) {
   this->luaState = luaL_newstate();
   luaL_openlibs(luaState);
   lua_register(luaState, "sendLuaMessage", sendLuaMessage);
+  lua_register(luaState, "sendLuaChannelMessage", sendLuaChannelMessage);
   lua_register(luaState, "sendLuaMessageToSource", sendLuaMessageToSource);
   lua_register(luaState, "getBotName", getBotName);
+  lua_register(luaState, "runSystemCommand", runSystemCommand);
+  lua_register(luaState, "runSystemCommandWithOutput", runSystemCommandWithOutput);
+  lua_register(luaState, "getChannelName", getChannelName);
   lua_register(luaState, "sendLuaPrivateMessage", sendLuaPrivateMessage);
   lua_register(luaState, "setPluginData", setPluginData);
   lua_register(luaState, "getPluginData", getPluginData);
