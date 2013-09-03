@@ -75,14 +75,15 @@ function parseAdminCommand(username, serverPart, userMessage, isPrivateMessage)
     local accUsername = userMessage:sub(0,string.find(userMessage, " ")-1)
     for key,value in pairs(admins)
     do
-      if value == accUsername then
+      if value == accUsername and adminCommands[accUsername] then
 	table.insert(authenticatedUsernames, accUsername)
 	runAdminCommand(accUsername, adminCommands[accUsername])
+	adminCommands[accUsername] = nil
       end
     end
   elseif (string.find(userMessage, "ACC") and username == "NickServ") then
     local accUsername = userMessage:sub(0,string.find(userMessage, " ")-1)
-    if accUsername ~= getBotName() then -- check it's not a message about the bot from nickserv...
+    if accUsername ~= getBotName() and adminCommands[accUsername] then -- check it's not a message about the bot from nickserv...
       sendLuaMessageToSource(accUsername, "You need to be authenticated with NickServ to use this command.", isPrivateMessage)
     end
   elseif (string.find(userMessage, topicCommand)) then
