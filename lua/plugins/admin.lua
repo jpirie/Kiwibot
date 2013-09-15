@@ -45,11 +45,11 @@ function runAdminCommand(username, command)
   if authenticated then
     if (string.find(command,topicCommand)) then
       local topic = command:sub(string.len(topicCommand) + 2, string.len(command))
-      sendLuaPrivateMessage("ChanServ", "TOPIC "..getChannelName()..command);
+      sendLuaPrivateMessage("ChanServ", "TOPIC "..getChannelName().." "..topic);
     elseif (string.find(command,opCommand)) then
-      sendLuaMessage("MODE "..getChannelName().." +o "..username)
+      sendLuaMessage("MODE "..getChannelName().." +o "..username.."\r\n")
     elseif (string.find(command,deopCommand)) then
-      sendLuaMessage("MODE "..getChannelName().." -o "..username)
+      sendLuaMessage("MODE "..getChannelName().." -o "..username.."\r\n")
     elseif (string.find(command,saveCommand)) then
       savePluginData()
     elseif (string.find(command,historyCommand)) then

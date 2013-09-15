@@ -52,6 +52,8 @@ public:
   int connectionSocket;
   int outputToUser(std::string, std::string);
 
+  int sendMessage(std::string);
+
  private:
 
   struct adminCommand {
@@ -63,8 +65,6 @@ public:
   std::map<std::string, adminCommand> adminCommandsUsed;
 
   std::string message;
-
-  int sendMessage(std::string);
 
   char *port;
 

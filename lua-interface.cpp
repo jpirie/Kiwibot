@@ -48,7 +48,7 @@ SystemUtils* LuaInterface::systemUtils;
 int LuaInterface::sendLuaMessage(lua_State *luaState) {
   lua_gettop(luaState);
   string msg = lua_tostring(luaState, 1);   // 1 is the first index of the array sent back (we only send one string to this function)
-  send((*ircbot).connectionSocket,msg.c_str(),msg.length(),0);
+  (*ircbot).sendMessage(msg);
   return 0;
 }
 
