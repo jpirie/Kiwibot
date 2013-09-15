@@ -52,8 +52,6 @@ function runAdminCommand(username, command)
       sendLuaMessage("MODE "..getChannelName().." -o "..username)
     elseif (string.find(command,saveCommand)) then
       savePluginData()
-    elseif (string.find(command,loadCommand)) then
-      loadPluginData()
     elseif (string.find(command,historyCommand)) then
       local date = command:sub(string.len(historyCommand)+2,string.len(command)-2)
       local uploadString = "if [ -f history/"..date.." ]; then curl -d private=True -d \"lang=Plain Text&submit=Submit\" --data-urlencode code@history/"..date.." codepad.org | grep -o \"http://codepad.org/[a-Z0-9]*\" | head -n 1; else echo \"Could not find history file.\"; fi"
@@ -68,6 +66,7 @@ function runAdminCommand(username, command)
 end
 
 function parseAdminCommand(username, serverPart, userMessage, isPrivateMessage)
+
   -- print admins if the user requests it
   if (string.find(userMessage, listCommand)) then
     printAdmins(username, isPrivateMessage)
@@ -96,7 +95,7 @@ function parseAdminCommand(username, serverPart, userMessage, isPrivateMessage)
     runAdminCommand(username, userMessage)
     sendLuaMessageToSource(username, "Data saved.")
   elseif (string.find(userMessage, loadCommand)) then
-    runAdminCommand(username, userMessage)
+    loadPluginData()
     sendLuaMessageToSource(username, "Data loaded.")
   elseif (string.find(userMessage, historyCommand)) then
     runAdminCommand(username, userMessage)

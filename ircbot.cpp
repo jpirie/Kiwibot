@@ -685,7 +685,8 @@ int IrcBot::parseMessage(string str) {
     outputToUser(username, "I have all kinds of fun features! Here's the list:\n"
 		 "\"!uptime\". Displays uptime.\n"
 		 "\"!history <start|stop>\". Starts/stops logging channel conversation.\n"
-		 "\"!shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(");
+		 "\"!shutdown\". Shuts me down. I won't come back though, please don't do that to me. :(\n"
+		 "Lua: !admins, !topic, !op, !deop, !<save|load> data, !history <date>, !seen <username>, !seenall, !reactions, !reaction enable <reaction>, !reaction disable <reaction>, !relay, !stop relay, !acknowledge, !stop acknowledge, !time, !update repo");
   }
   else if (stringSearch(userMessage, ircbotName+": uptime")) {
     int uptime = uptimeTimer.elapsedTime();

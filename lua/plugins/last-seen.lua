@@ -85,8 +85,8 @@ function lastSeenParse(username, serverPart, userMessage, isPrivateMessage)
     outputString = outputString .. "End of list."
     sendLuaPrivateMessage(username, outputString)
   elseif (string.find(userMessage, seenCommand)) then
-    -- grab the name the user supplied (we take away 2 from the length of the string because we don't want the \n part (not one char... odd)
-    local name = userMessage:sub(string.find(userMessage, seenCommand)+string.len(seenCommand),string.len(userMessage)-2)
+    -- we remove the last two characters to remove the new line character
+    local name = userMessage:sub(string.len(seenCommand)+2,string.len(userMessage)-2)
     if namesSeen[name] then
       sendLuaMessageToSource(username, name.." last seen "..namesSeen[name], isPrivateMessage);
     else

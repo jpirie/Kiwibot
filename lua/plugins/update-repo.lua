@@ -17,7 +17,7 @@
 -- Description: A plugin to update the repository that Kiwibot is running in
 ----------------------------------------------------------------------
 
-updateRepoCommand = getBotName()..": !update repo"
+updateRepoCommand = getBotName()..": update repo"
 
 function parseUpdateRepo(username, serverPart, userMessage, isPrivateMessage)
     if (string.find(userMessage, updateRepoCommand)) then
