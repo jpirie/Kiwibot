@@ -19,9 +19,10 @@
 
 function time(username, serverPart, userMessage, isPrivateMessage)
   local botname = getBotName():lower()
+  local things = {"snacks", "otter pictures", "herby tea", "to do Graham's thesis", "drop sconnies", "pecan pah", "pecan po", "snug snug", username .. " to be banished", username .. " to get out", username .. " to repent"}
   userMessage = userMessage:lower()
   if (string.find(userMessage, botname..": time")) then
-    sendLuaMessageToSource(username,os.date(),isPrivateMessage)
+    sendLuaMessageToSource(username,"Time for " .. things[math.random(#things)] .. " (" .. os.date() .. ")",isPrivateMessage)
   end
 end
 

@@ -52,6 +52,12 @@ function animalParse(username, serverPart, userMessage, isPrivateMessage)
   if (string.find(userMessage, "feeds "..botname)) then
     if (string.find(userMessage, "turd") or string.find(userMessage, "poo")) then
       sendLuaMessageToSource(username, string.upper("NO "..username.."! BAD "..username.."!"), isPrivateMessage)
+    elseif string.find(userMessage,"po") then
+      sendLuaMessageToSource(username, "Most honourable", isPrivateMessage)
+    elseif string.find(userMessage,"pah") then
+      sendLuaMessageToSource(username, "Boy ziggity, slap mah kiwi thah", isPrivateMessage)
+    elseif string.find(userMessage,"cabbage") or string.find(userMessage,"sprouts") then
+      sendLuaMessageToSource(username, "Thanks for blessing me with the gift of the guff " .. username, isPrivateMessage)
     else
       -- we should add points to the user that feeds kiwi so that it loves that user more
       sendLuaMessageToSource(username, thanksSynonyms[math.random(#thanksSynonyms)], isPrivateMessage)
@@ -67,6 +73,7 @@ function animalParse(username, serverPart, userMessage, isPrivateMessage)
     for _,greeting in pairs(helloSynonyms) do
       if (string.find(userMessage, greeting.." "..botname)) then
 	sendLuaMessageToSource(username, "hi, CREE!", isPrivateMessage)
+	break
       end
     end
 
@@ -74,6 +81,7 @@ function animalParse(username, serverPart, userMessage, isPrivateMessage)
     for _,farewells in pairs(byeSynonyms) do
       if (string.find(userMessage, farewells.." "..botname)) then
 	sendLuaMessageToSource(username, "Laters, I'll keep this channel in check for you, have no fear!", isPrivateMessage)
+	break
       end
     end
   end
