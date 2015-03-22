@@ -17,16 +17,16 @@
 -- Description: Plugin which can display the time.
 ----------------------------------------------------------------------
 
-function time(username, serverPart, userMessage, isPrivateMessage)
+function concur(username, serverPart, userMessage, isPrivateMessage)
   local concur_count = 0
-  if (string.find(userMessage, "concur")) then
+  if (string.find(userMessage, "I concur")) then
     concur_count = concur_count + 1
   end
   if concur_count == 2 then
-    sendLuaMessageToSource(username,"I concur",isPrivateMessage)
+    sendLuaMessageToSource(username,"I also concur",isPrivateMessage)
     concur_count = 0
   end
 end
 
 
-return {name="Time", description="Concurs in meetings"}
+return {name="Time", description="Concurs in meetings", parseFunction=concur}
