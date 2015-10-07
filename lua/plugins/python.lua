@@ -60,7 +60,7 @@ function python(username, serverPart, userMessage, isPrivateMessage)
   {"We are no longer the knights who say ni! We are now the knights who say ekki-ekki-ekki-pitang-zoom-boing!"}
   }
   userMessage = userMessage:lower()
-  if (string.find(userMessage, "!python")) then
+  if (string.find(userMessage, botname..": python")) then
 	local quote = quotes[math.random(#quotes)]
 	for i,v ipairs(quote) do
 		if(#quote[i]<400) then
@@ -75,7 +75,7 @@ function python(username, serverPart, userMessage, isPrivateMessage)
   end
 end
 
-local documentation = {['Usage'] = "\"!python\" Prints a random Monty Python quote"}
+local documentation = {['Usage'] = "\"botname: python\" or \"!python\" prints a random Monty Python quote"}
 
 return {name="Python", description="Returns a Monty Python quote",
 	parseFunction=python, doc=documentation}
