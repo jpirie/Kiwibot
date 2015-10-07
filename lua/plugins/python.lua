@@ -63,7 +63,14 @@ function python(username, serverPart, userMessage, isPrivateMessage)
   if (string.find(userMessage, "!python")) then
 	local quote = quotes[math.random(#quotes)]
 	for i,v ipairs(quote) do
-	    sendLuaMessageToSource(username, quote[i],isPrivateMessage)
+		if(#quote[i]<400) then
+			sendLuaMessageToSource(username, quote[i],isPrivateMessage)
+		else
+			local tempString = string.sub(quote[i], 0, string.find(quote[i], " ", 390))
+			sendLuaMessageToSource(username, tempString,isPrivateMessage)
+			tempString = string.sub(quote[i], string.find(quote[i], " ", 390))
+			sendLuaMessageToSource(username, tempString,isPrivateMessage)
+		end
 	end
   end
 end
