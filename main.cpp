@@ -107,11 +107,11 @@ int main(int argc, char* argv[]) {
       argumentCounter++;
       connect = false;
     }
-  }
+  j}
 
   int botStatus = SUCCESS;
   if (connect) {
-    while (botStatus == SUCCESS | botStatus == DISCONNECTED) {
+    while ((botStatus == SUCCESS) | (botStatus == DISCONNECTED)) {
       IrcBot bot = IrcBot(nick,"USER guest tolmoon tolsun :Ronnie Regan");
 
       //initialise the bot on channel specified in parameter

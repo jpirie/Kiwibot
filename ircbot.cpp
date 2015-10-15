@@ -371,7 +371,7 @@ int IrcBot::mainLoop () {
 
   while (1) {
     int botStatus = checkAndParseMessages();
-    if (botStatus == SHUTDOWN | botStatus == DISCONNECTED)
+    if ((botStatus == SHUTDOWN) | (botStatus == DISCONNECTED))
       return botStatus;
   }
 }
