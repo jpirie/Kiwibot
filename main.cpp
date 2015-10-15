@@ -107,7 +107,7 @@ int main(int argc, char* argv[]) {
       argumentCounter++;
       connect = false;
     }
-  j}
+  }
 
   int botStatus = SUCCESS;
   if (connect) {
