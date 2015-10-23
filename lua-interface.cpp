@@ -33,10 +33,6 @@
 #include "system-utils.h"
 
 using namespace std;
-
-// set to false when we have loaded the data from plugins for the first time
-bool firstPluginLoad = true;
-
 string saveFile;
 
 IrcBot* LuaInterface::ircbot;
@@ -112,10 +108,12 @@ int LuaInterface::sendLuaPrivateMessage(lua_State *luaState) {
 
 LuaInterface::LuaInterface(string thisSaveFile) {
   saveFile = thisSaveFile;
+  firstPluginLoad = true;
 }
 
 LuaInterface::LuaInterface() {
   map<string, string> luaFileHashes; // a map from file name to hash of the file
+  firstPluginLoad = true;
 }
 
 void LuaInterface::closeState() {

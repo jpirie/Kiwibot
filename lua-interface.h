@@ -32,6 +32,8 @@ extern "C" {
 
 class LuaInterface {
  private:
+  // set to false when we have loaded the data from plugins for the first time
+  bool firstPluginLoad;
   std::map<std::string, std::string> luaFileHashes;
   static IrcBot* ircbot;
   static SystemUtils* systemUtils;

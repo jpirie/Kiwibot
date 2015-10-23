@@ -19,6 +19,7 @@
 #ifndef IRCBOT_H_
 #define IRCBOT_H_
 
+#include <Python.h>
 #include <string.h>
 #include <map>
 

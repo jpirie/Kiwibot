@@ -35,6 +35,7 @@
 #include <dirent.h>
 
 #include "lua-interface.h"
+#include "python-interface.h"
 #include "timer.h"
 #include "system-utils.h"
 #include "ircbot.h"
@@ -61,6 +62,7 @@ vector<string> connectedUsernames;
 vector<string> authenticatedUsernames;
 
 LuaInterface luaInterface;
+PythonInterface pythonInterface;
 SystemUtils systemUtils;
 
 /* this needs to be a global variable because of a funky issue with the fact
@@ -103,6 +105,7 @@ IrcBot::IrcBot(string nick, string user) {
 // we close the connection when deconstructing the bot
 IrcBot::~IrcBot() {
   luaInterface.closeState();
+  pythonInterface.closeState();
   close (connectionSocket); // close the socket
 }
 
@@ -279,6 +282,9 @@ void IrcBot::init(string channel, string password, string saveFile) {
 
   luaInterface = LuaInterface(dataFile);
   luaInterface.initState(this);
+
+  pythonInterface = PythonInterface(dataFile);
+  pythonInterface.initState(this);
 
   systemUtils = SystemUtils();
 
@@ -760,6 +766,7 @@ int IrcBot::parseMessage(string str) {
   /* once the connection has been established, we can run the lua plugins */
   if (connected) {
     luaInterface.runPlugins(username, serverInfo, userMessage, isPrivateMessage);
+    pythonInterface.runPlugins(username, serverInfo, userMessage, isPrivateMessage);
   }
 
   return SUCCESS;
