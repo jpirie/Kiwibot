@@ -10,6 +10,7 @@ class RollPlugin(BasePlugin):
         self.challenge = None
         self.points = {}
         self.dicePattern = re.compile(r"((\d+)?d(\d+)(([+|-])(\d+))?)$")
+        self.canI = {}
 
     def updatePoints(self, username, points):
         if self.challenge and username not in self.challenge.challengers:
@@ -184,3 +185,9 @@ class RollPlugin(BasePlugin):
                     challenge = chg.group(4)
                     self.issueChallenge(dice, predicate, int(target), challenge, username)
 
+        match = re.search(self.getBotName() + ": can I (.*)", str(message).strip())
+        if(match):
+            thing = match.group(1)
+            self.seeIfYouCan(username, thing)
+
+        match = re.search(self.getBotName() + ": try", message.strip())
