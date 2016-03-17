@@ -23,6 +23,7 @@
 #include <unistd.h>
 #include "timer.h"
 #include "ircbot.h"
+#include <time.h>
 
 using namespace std;
 
@@ -109,19 +110,53 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  int botStatus = SUCCESS;
+  int botStatus = DISCONNECTED;
+  bool initialised = false;
+  int sleepTimer = 0;
+  const int MAX_SLEEP_TIME = 15 * 60; // 15 minutes
+
   if (connect) {
+	  
     while ((botStatus == SUCCESS) | (botStatus == DISCONNECTED)) {
+    	
       IrcBot bot = IrcBot(nick,"USER guest tolmoon tolsun :Ronnie Regan");
 
       //initialise the bot on channel specified in parameter
-      bot.init(channel, password, dataFile);
+      initialised = bot.init(channel, password, dataFile);
 
       /* start the main loop where we check for messages */
-      botStatus = bot.mainLoop();
-
-      if (botStatus == DISCONNECTED)
-	cout << "DISCONNECTED status reported. Re-connecting the kiwi to the world..." << endl;
+      if(initialised) {
+          botStatus = bot.mainLoop();
+          sleepTimer = 0;
+      } 
+      
+      if (initialised && botStatus == DISCONNECTED) {
+    	  
+    	initialised  = false;
+        cout << "DISCONNECTED status reported. Re-connecting the kiwi to the world..." << endl;
+        
+      } else {
+        // Count up in 10 seconds up to 1 minute for reconnection tries
+        if(sleepTimer < 60) {
+            sleepTimer += 10;
+        }
+        // After 1 minute extend the sleep by another minute - up to 15 minutes
+        else if(sleepTimer < MAX_SLEEP_TIME) {
+            sleepTimer += 60;
+        }
+        
+        cout << "Failed to connect kiwi. Trying again in ";
+        if(sleepTimer < 60)
+        	cout << sleepTimer << " seconds. Creeeee!" << endl;
+        else
+        	cout << (sleepTimer/60l) << " minutes. Creee Creee CREEEEEEEEEEEE!";
+        
+        struct timespec req = {0};
+        req.tv_sec = sleepTimer;
+        req.tv_nsec = 0;
+        nanosleep(&req, (struct timespec *)NULL);
+        
+      }
     }
   }
 

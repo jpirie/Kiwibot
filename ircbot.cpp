@@ -33,6 +33,7 @@
 #include <ctime>
 #include <iomanip>
 #include <dirent.h>
+#include <fcntl.h>
 
 #include "lua-interface.h"
 #include "python-interface.h"
@@ -261,7 +262,7 @@ string IrcBot::getChannelSendString() {
 }
 
 // initialises the irc bot.
-void IrcBot::init(string channel, string password, string saveFile) {
+bool IrcBot::init(string channel, string password, string saveFile) {
 
   // make directories that might not exist
   systemUtils.runProcessWithReturn("mkdir -p history/");
@@ -292,13 +293,15 @@ void IrcBot::init(string channel, string password, string saveFile) {
 
   if ((getaddrinfo("irc.freenode.net","6667",&hints,&serverInfo)) != 0) {
     cout << "Error getting address information. Exiting.";
-    return;
+    return false;
   }
 
   // set up the socket
   if ((connectionSocket = socket(serverInfo->ai_family,serverInfo->ai_socktype,serverInfo->ai_protocol)) < 0) {
     cout << "Error with initialising the socket. Exiting.";
-    return;
+    return false;
+  } else {
+	  //fcntl(connectionSocket, F_SETFL, O_NONBLOCK);
   }
 
   // this->connectionSocket = connectionSocket;
@@ -307,8 +310,10 @@ void IrcBot::init(string channel, string password, string saveFile) {
   if (connect(connectionSocket,serverInfo->ai_addr, serverInfo->ai_addrlen) < 0) {
       cout << "Error with connecting to the server. Exiting.";
       close (connectionSocket);
-      return;
+      return false;
   }
+  
+  freeaddrinfo(serverInfo);
 
   // send nick information
   sendMessage("NICK "+nick);
@@ -335,6 +340,8 @@ void IrcBot::init(string channel, string password, string saveFile) {
   /* we're now on the channel, start the pingTimer */
   pingTimer.start();
   uptimeTimer.start();
+
+  return true;
 }
 
 /* checks for any messages from the server, and parses any that it finds. It
@@ -351,13 +358,18 @@ int IrcBot::checkAndParseMessages() {
 
   // check for ping messages
   if (stringSearch(message,"PING ")) {
+	cout << "Sending pong!!!" << endl;
     sendPong(message);
     pingTimer.start();
+  }
+  else if (stringSearch(message, "BYE BYE")) {
+	  botStatus = DISCONNECTED;
   }
   else if (message != "") {
     botStatus = parseMessage(message);
     pingTimer.start();
   }
+
 
   if (connected) {
     cout << "At end of checkAndParseMessages. PingTimer (possibly-reset) is at " << pingTimer.elapsedTime() << endl;
@@ -377,7 +389,7 @@ int IrcBot::mainLoop () {
 
   while (1) {
     int botStatus = checkAndParseMessages();
-    if ((botStatus == SHUTDOWN) | (botStatus == DISCONNECTED))
+    if ((botStatus == SHUTDOWN) || (botStatus == DISCONNECTED))
       return botStatus;
   }
 }
@@ -763,7 +775,7 @@ int IrcBot::parseMessage(string str) {
     }
   }
 
-  /* once the connection has been established, we can run the lua plugins */
+  /* once the connection has been established, we can run the lua and python plugins */
   if (connected) {
     luaInterface.runPlugins(username, serverInfo, userMessage, isPrivateMessage);
     pythonInterface.runPlugins(username, serverInfo, userMessage, isPrivateMessage);

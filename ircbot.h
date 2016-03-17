@@ -1,6 +1,7 @@
 /*********************************************************************
  * Copyright 2012 2013 William Gatens
  * Copyright 2012 2013 John Pirie
+ * Copyright 2016 Peter Gatens
  *
  * Kiwibot is a free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -43,7 +44,7 @@ public:
 
   std::string getChannelSendString();
 
-  void init(std::string, std:: string, std::string);
+  bool init(std::string, std:: string, std::string);
 
   std::string getNick();
   std::string getChannel();
