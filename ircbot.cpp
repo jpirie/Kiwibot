@@ -1,6 +1,7 @@
 /*********************************************************************
  * Copyright 2012 2013 William Gatens
  * Copyright 2012 2013 John Pirie
+ * Copyright 2015 2016 Peter Gatens 
  *
  * Kiwibot is a free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +25,7 @@
 #include <string>
 #include <sstream>
 #include <unistd.h>
+#include <poll.h>
 #include <algorithm>
 #include <netdb.h>
 #include <stdlib.h>
@@ -77,6 +79,10 @@ string dataFile = "";
 int SUCCESS = 0;       // success flag
 int DISCONNECTED  = 1; // bot has been disconnected, shut it down
 int SHUTDOWN  = 2;     // shutdown the bot
+
+// timeout and messages
+const int MAX_PING = 300;
+const int POLL_FREQUENCY = 30 * 1000; // 30 seconds in milliseconds
 
 
 // maximum lines to send to the user at any one time
@@ -300,11 +306,7 @@ bool IrcBot::init(string channel, string password, string saveFile) {
   if ((connectionSocket = socket(serverInfo->ai_family,serverInfo->ai_socktype,serverInfo->ai_protocol)) < 0) {
     cout << "Error with initialising the socket. Exiting.";
     return false;
-  } else {
-	  //fcntl(connectionSocket, F_SETFL, O_NONBLOCK);
   }
-
-  // this->connectionSocket = connectionSocket;
 
   // connect to the server
   if (connect(connectionSocket,serverInfo->ai_addr, serverInfo->ai_addrlen) < 0) {
@@ -353,30 +355,22 @@ int IrcBot::checkAndParseMessages() {
   // recieve messages from the server (will sleep until it receives some)
   message=checkServerMessages(buffer, sizeof(buffer));
 
-  if (connected)
-    cout << "At beginning of checkAndParseMessages. PingTimer is currently at " << pingTimer.elapsedTime() << endl;
+  cout << "At beginning of checkAndParseMessages. PingTimer is currently at " << pingTimer.elapsedTime() << endl;
 
   // check for ping messages
   if (stringSearch(message,"PING ")) {
-	cout << "Sending pong!!!" << endl;
     sendPong(message);
     pingTimer.start();
-  }
-  else if (stringSearch(message, "BYE BYE")) {
-	  botStatus = DISCONNECTED;
   }
   else if (message != "") {
     botStatus = parseMessage(message);
     pingTimer.start();
   }
 
-
-  if (connected) {
-    cout << "At end of checkAndParseMessages. PingTimer (possibly-reset) is at " << pingTimer.elapsedTime() << endl;
-
-    // if we think we have been disconnected
-    if (pingTimer.elapsedTime() > 300)
-      botStatus = DISCONNECTED; // restart the bot
+  // if we think we have been disconnected
+  if (pingTimer.elapsedTime() > MAX_PING) {
+     cout << "Ping timer: " << pingTimer.elapsedTime() << endl;
+     botStatus = DISCONNECTED; // restart the bot
   }
 
   return botStatus;
@@ -397,18 +391,26 @@ int IrcBot::mainLoop () {
 // checks for incoming server messages
 string IrcBot::checkServerMessages(char* buffer, size_t size) {
   // get any messages that are incoming
-  size_t total = ::recv(connectionSocket, buffer, size-1, 0);
+  cout << "Getting server messages...." << endl;
 
-  // add the string termination character
-  buffer[total] = '\0';
+  // Poll for server messages every 30 seconds, do not block waiting for messages!
+  struct pollfd fd;
+  fd.fd = connectionSocket;
+  fd.events = POLLIN;
+  int res = poll(&fd, 1, POLL_FREQUENCY);
 
-  // convert to std::string and return
   string str = "";
-  str.assign(buffer);
-  if (str != "")
-    cout << "received message: " << str << endl;
-  return str;
-}
+
+  if((fd.revents & POLLIN) != 0) {
+      int total = recv(connectionSocket, buffer, size-1, 0);
+      // add the string termination character
+      buffer[total] = '\0';
+      // convert to std::string and return
+      str.assign(buffer);
+      cout << "received message: " << str << endl;
+    }
+    return str;
+  }
 
 // outputs a message to the irc channel
 int IrcBot::outputToChannel(string msg) {
