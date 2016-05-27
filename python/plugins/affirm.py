@@ -7,8 +7,8 @@ class AffirmPlugin(BasePlugin):
     def __init__(self, name):
         print("Loaded affirm")
         plugin_loc = os.path.dirname(__file__)
-        with open(plugin_loc + '/data/affirm.txt') as f:
-            self.aff = f.read().splitlines()
+        with open(plugin_loc + '/data/affirm.txt', 'rb') as f:
+            self.aff = f.read().decode('utf-8').splitlines()
         shuffle(self.aff)
         self.index = 0
         self.count = len(self.aff)
