@@ -20,8 +20,8 @@
 ######################################################################
 
 # Includes are different between Kiwi home machine and my local machine. May need changes to get it compiling locally on your machine (should work for Kiwi though).
-LUA_LINK=-llua -ldl
-LUA_INCLUDE=
+LUA_LINK=-llua -ldl -L/home/simown/Downloads/lua-5.2.3/src
+LUA_INCLUDE=-I/home/simown/Downloads/lua-5.2.3/src
 PYTHON_C_FLAGS=`python3-config --cflags`
 PYTHON_LD_FLAGS=`python3-config --ldflags`
 FILES=main.cpp lua-interface.cpp python-interface.cpp system-utils.cpp ircbot.cpp timer.cpp  

@@ -1,6 +1,7 @@
 /*********************************************************************
  * Copyright 2012 2013 William Gatens
  * Copyright 2012 2013 John Pirie
+ * Copyright 2015 2016 Peter Gatens 
  *
  * Kiwibot is a free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,6 +25,7 @@
 #include <string>
 #include <sstream>
 #include <unistd.h>
+#include <poll.h>
 #include <algorithm>
 #include <netdb.h>
 #include <stdlib.h>
@@ -33,6 +35,7 @@
 #include <ctime>
 #include <iomanip>
 #include <dirent.h>
+#include <fcntl.h>
 
 #include "lua-interface.h"
 #include "python-interface.h"
@@ -76,6 +79,10 @@ string dataFile = "";
 int SUCCESS = 0;       // success flag
 int DISCONNECTED  = 1; // bot has been disconnected, shut it down
 int SHUTDOWN  = 2;     // shutdown the bot
+
+// timeout and messages
+const int MAX_PING = 300;
+const int POLL_FREQUENCY = 30 * 1000; // 30 seconds in milliseconds
 
 
 // maximum lines to send to the user at any one time
@@ -261,7 +268,7 @@ string IrcBot::getChannelSendString() {
 }
 
 // initialises the irc bot.
-void IrcBot::init(string channel, string password, string saveFile) {
+bool IrcBot::init(string channel, string password, string saveFile) {
 
   // make directories that might not exist
   systemUtils.runProcessWithReturn("mkdir -p history/");
@@ -292,23 +299,23 @@ void IrcBot::init(string channel, string password, string saveFile) {
 
   if ((getaddrinfo("irc.freenode.net","6667",&hints,&serverInfo)) != 0) {
     cout << "Error getting address information. Exiting.";
-    return;
+    return false;
   }
 
   // set up the socket
   if ((connectionSocket = socket(serverInfo->ai_family,serverInfo->ai_socktype,serverInfo->ai_protocol)) < 0) {
     cout << "Error with initialising the socket. Exiting.";
-    return;
+    return false;
   }
-
-  // this->connectionSocket = connectionSocket;
 
   // connect to the server
   if (connect(connectionSocket,serverInfo->ai_addr, serverInfo->ai_addrlen) < 0) {
       cout << "Error with connecting to the server. Exiting.";
       close (connectionSocket);
-      return;
+      return false;
   }
+  
+  freeaddrinfo(serverInfo);
 
   // send nick information
   sendMessage("NICK "+nick);
@@ -335,6 +342,8 @@ void IrcBot::init(string channel, string password, string saveFile) {
   /* we're now on the channel, start the pingTimer */
   pingTimer.start();
   uptimeTimer.start();
+
+  return true;
 }
 
 /* checks for any messages from the server, and parses any that it finds. It
@@ -346,8 +355,7 @@ int IrcBot::checkAndParseMessages() {
   // recieve messages from the server (will sleep until it receives some)
   message=checkServerMessages(buffer, sizeof(buffer));
 
-  if (connected)
-    cout << "At beginning of checkAndParseMessages. PingTimer is currently at " << pingTimer.elapsedTime() << endl;
+  cout << "At beginning of checkAndParseMessages. PingTimer is currently at " << pingTimer.elapsedTime() << endl;
 
   // check for ping messages
   if (stringSearch(message,"PING ")) {
@@ -359,12 +367,10 @@ int IrcBot::checkAndParseMessages() {
     pingTimer.start();
   }
 
-  if (connected) {
-    cout << "At end of checkAndParseMessages. PingTimer (possibly-reset) is at " << pingTimer.elapsedTime() << endl;
-
-    // if we think we have been disconnected
-    if (pingTimer.elapsedTime() > 300)
-      botStatus = DISCONNECTED; // restart the bot
+  // if we think we have been disconnected
+  if (pingTimer.elapsedTime() > MAX_PING) {
+     cout << "Ping timer: " << pingTimer.elapsedTime() << endl;
+     botStatus = DISCONNECTED; // restart the bot
   }
 
   return botStatus;
@@ -377,7 +383,7 @@ int IrcBot::mainLoop () {
 
   while (1) {
     int botStatus = checkAndParseMessages();
-    if ((botStatus == SHUTDOWN) | (botStatus == DISCONNECTED))
+    if ((botStatus == SHUTDOWN) || (botStatus == DISCONNECTED))
       return botStatus;
   }
 }
@@ -385,18 +391,26 @@ int IrcBot::mainLoop () {
 // checks for incoming server messages
 string IrcBot::checkServerMessages(char* buffer, size_t size) {
   // get any messages that are incoming
-  size_t total = ::recv(connectionSocket, buffer, size-1, 0);
+  cout << "Getting server messages...." << endl;
 
-  // add the string termination character
-  buffer[total] = '\0';
+  // Poll for server messages every 30 seconds, do not block waiting for messages!
+  struct pollfd fd;
+  fd.fd = connectionSocket;
+  fd.events = POLLIN;
+  int res = poll(&fd, 1, POLL_FREQUENCY);
 
-  // convert to std::string and return
   string str = "";
-  str.assign(buffer);
-  if (str != "")
-    cout << "received message: " << str << endl;
-  return str;
-}
+
+  if((fd.revents & POLLIN) != 0) {
+      int total = recv(connectionSocket, buffer, size-1, 0);
+      // add the string termination character
+      buffer[total] = '\0';
+      // convert to std::string and return
+      str.assign(buffer);
+      cout << "received message: " << str << endl;
+    }
+    return str;
+  }
 
 // outputs a message to the irc channel
 int IrcBot::outputToChannel(string msg) {
@@ -763,7 +777,7 @@ int IrcBot::parseMessage(string str) {
     }
   }
 
-  /* once the connection has been established, we can run the lua plugins */
+  /* once the connection has been established, we can run the lua and python plugins */
   if (connected) {
     luaInterface.runPlugins(username, serverInfo, userMessage, isPrivateMessage);
     pythonInterface.runPlugins(username, serverInfo, userMessage, isPrivateMessage);

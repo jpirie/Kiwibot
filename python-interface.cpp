@@ -167,7 +167,7 @@ PythonInterface::PythonInterface()
 void PythonInterface::closeState() 
 {
   // Let go of the reference to the interpreter state
-  Py_XDECREF(this->pythonLoaderState);
+  //Py_XDECREF(this->pythonLoaderState);
   // Shut down the interpreter
   Py_Finalize();
 }
@@ -187,11 +187,6 @@ void PythonInterface::runPythonLoaderStateMethod(string methodName, PyObject *ar
       Py_XDECREF(pValue);
       exit(1);
   }
-
-  // Cleanup
-  Py_XDECREF(args);
-  Py_XDECREF(function);
-  Py_XDECREF(pValue);
 }
 
 void PythonInterface::runPlugins(string username, string serverInfo, string userMessage, bool isPrivateMessage) {
@@ -242,13 +237,11 @@ void PythonInterface::initState(IrcBot* bot)
       exit(1);
   }
 
-
-
   // Register the new module with the loader's dictionary (i.e. make it importable to the loader)
   PyDict_SetItemString(loaderDict, "ircbot", ircModule);
 
   // Save the state of the loader module, make sure we keep a reference to it open.
-  Py_XINCREF(loaderModule); 
+  //Py_XINCREF(loaderModule); 
   this->pythonLoaderState = loaderModule;
 
   // Run the "run" method of the loader with no arguments

@@ -5,11 +5,17 @@ from plugins.BasePlugin import BasePlugin
 
 class RollPlugin(BasePlugin):
 
+    SUCCESS_MESSAGES = ["May kiwi luck shine apon you", "CREE CREE!", "Most honourable", "Well darn tootin' you did it!", "I can't believe it", "Hallelujah! Praise the kiwi on high!", "You are truly kiwi blessed this day", "WOWF!"]
+    FAILURE_MESSAGES = ["I'm the opposite of glad", "And no argy-bargy either", "Shucks", "You bring dishonour to the kiwi family name", "Such a shame, a kiwi shame", "CROOOOO", "By failing you have angered the kiwi gods", "Stop that", "GET OUT!"]
+
+
     def __init__(self, name):
         self.Challenge = namedtuple("Challenge", ["dice", "min", "max", "predicate", "target", "challenge", "challengers"])
+        self.CanITry = namedtuple("CanITry", ["username", "thing", "dice", "predicate", "target"])
         self.challenge = None
         self.points = {}
         self.dicePattern = re.compile(r"((\d+)?d(\d+)(([+|-])(\d+))?)$")
+        self.canI = {}
 
     def updatePoints(self, username, points):
         if self.challenge and username not in self.challenge.challengers:
@@ -151,6 +157,51 @@ class RollPlugin(BasePlugin):
         if(predicate == "="):
             return total == target
 
+    def printTry(self, username, thing, predicate, target, dice):
+        message = username + ", roll " + predicate + " " + str(target) + " on a " + dice + " "
+        message += "to find out if you can " +  thing
+        self.sendSingleMessage(username, message)
+
+    def seeIfYouCan(self, username, thing):
+        dice, predicate, target = self.generateTry()
+        if(username in self.canI.keys()):
+            thing = self.canI[username].thing
+            self.sendSingleMessage(username, "You already asked me if you could %s. Try and see if you can do that first. CREEEE!" % (thing, ))
+        else:
+            self.canI[username] = self.CanITry(username, thing, dice, predicate, target)
+            self.printTry(username, thing, predicate, target, dice)
+
+    def showTry(self, username):
+        if(username in self.canI.keys()):
+            userTry = self.canI[username]
+            self.printTry(userTry.username, userTry.thing, userTry.predicate, userTry.target, userTry.dice)
+        else:
+            self.sendSingleMessage(username, "You didn't ask me if you could do anything! Croooo")
+
+    def generateTry(self):
+        multiplier = random.randint(0, 2)
+        dice = random.randint(2, 12)
+        diceString = (str(multiplier) if multiplier > 1 else "") + "d" + str(dice)
+        multiplier = max(multiplier, 1)
+        maxRoll = multiplier * dice
+        minRoll = multiplier * 1
+        target = random.randint(minRoll+1, maxRoll-1)
+        predicate = random.choice(["<", ">"])
+        return diceString, predicate, target
+
+    def attemptTry(self, username, userTry):
+        rollMatch = self.dicePattern.match(userTry.dice)
+        if(rollMatch):
+            calculation, total = self.roll(rollMatch, username)
+            if(self.rollSucceeds(userTry.predicate, total, userTry.target)):
+                success = "Success: Result " + calculation + " = " + str(total) + " is " + userTry.predicate + " " + str(userTry.target) + ". You can " +  userTry.thing+ ", " + username +  ". " + random.choice(RollPlugin.SUCCESS_MESSAGES)
+                success = success.replace(" my", " your").replace(" me", " you")
+                self.sendSingleMessage(username, success)
+            else:
+                failure = "Failure: Result " + calculation + " = " + str(total) + " is not " + userTry.predicate + " " + str(userTry.target) + ". You can not " + userTry.thing+ ", " + username + ". " + random.choice(RollPlugin.FAILURE_MESSAGES)
+                failure = failure.replace(" my", " your").replace(" me", " you")
+                self.sendSingleMessage(username,  failure)
+
     def parseMessage(self, username, serverPart, message, isPrivateMessage):
         match = re.search(self.getBotName() + ": roll ?(.*)", str(message).strip())
         if(match):
@@ -184,3 +235,20 @@ class RollPlugin(BasePlugin):
                     challenge = chg.group(4)
                     self.issueChallenge(dice, predicate, int(target), challenge, username)
 
+        match = re.search(self.getBotName() + ": ([c|C]an|[M|m]ay|[M|m]ight) [I|i] (.*)\?", str(message).strip())
+        if(match):
+            thing = match.group(2)
+            self.seeIfYouCan(username, thing)
+
+        match = re.search(self.getBotName() + ": try (.+)", message.strip())
+        if(match):
+            command = match.group(1).strip()
+            if(command == "show"):
+                self.showTry(username)
+            elif(command == "roll"):
+                if username in self.canI.keys():
+                    userTry = self.canI[username]
+                    self.attemptTry(username, userTry)
+                    del self.canI[username]
+                else:
+                    self.sendSingleMessage(username, "What are you trying to do? You didn't ask me anything!")
