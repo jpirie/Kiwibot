@@ -20,7 +20,7 @@
 ######################################################################
 
 # Includes are different between Kiwi home machine and my local machine. May need changes to get it compiling locally on your machine (should work for Kiwi though).
-LUA_LINK=
+LUA_LINK=llua -ldl
 LUA_INCLUDE=
 PYTHON_C_FLAGS=`python3-config --cflags`
 PYTHON_LD_FLAGS=`python3-config --ldflags`
