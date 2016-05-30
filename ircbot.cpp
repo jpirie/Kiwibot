@@ -53,7 +53,7 @@ extern "C" {
 using namespace std;
 
 // define a data size for the input line
-#define DATA_SIZE 256
+#define DATA_SIZE 512
 
 // a flag to let us know if we are now connected to channel (not receiving more startup messages)
 bool connected;
